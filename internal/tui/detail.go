@@ -11,6 +11,7 @@ import (
 
 	"github.com/03-CiprianoG/jeera/internal/core"
 	"github.com/03-CiprianoG/jeera/internal/run"
+	"github.com/03-CiprianoG/jeera/internal/schedule"
 	"github.com/03-CiprianoG/jeera/internal/store"
 	"github.com/03-CiprianoG/jeera/internal/tui/theme"
 )
@@ -47,6 +48,7 @@ const (
 	ikPoints inputKind = iota
 	ikTag
 	ikComment
+	ikCron
 )
 
 // detailModel is the full-screen ticket view: a Glamour-rendered, scrollable
@@ -56,6 +58,7 @@ const (
 type detailModel struct {
 	store  *store.Store
 	runMgr *run.Manager
+	sched  *schedule.Scheduler
 	theme  theme.Theme
 
 	issueID int64
@@ -68,6 +71,7 @@ type detailModel struct {
 	links     []store.LinkedIssue
 	comments  []core.Comment
 	runs      []core.Run
+	schedules []core.Schedule
 
 	vp        viewport.Model
 	desc      textarea.Model
@@ -81,8 +85,8 @@ type detailModel struct {
 	err           string
 }
 
-func newDetail(st *store.Store, mgr *run.Manager, th theme.Theme, issueID int64, w, h int) *detailModel {
-	d := &detailModel{store: st, runMgr: mgr, theme: th, issueID: issueID, vp: viewport.New()}
+func newDetail(st *store.Store, mgr *run.Manager, sched *schedule.Scheduler, th theme.Theme, issueID int64, w, h int) *detailModel {
+	d := &detailModel{store: st, runMgr: mgr, sched: sched, theme: th, issueID: issueID, vp: viewport.New()}
 	d.setSize(w, h)
 	d.reload()
 	return d
@@ -144,6 +148,7 @@ func (d *detailModel) reload() {
 	d.links, _ = d.store.ListLinks(iss.ID)
 	d.comments, _ = d.store.ListComments(iss.ID)
 	d.runs, _ = d.store.ListRuns(iss.ID)
+	d.schedules, _ = d.store.ListSchedules(iss.ID)
 	d.vp.SetHeight(d.descViewHeight())
 	d.renderDescription()
 }
@@ -193,8 +198,12 @@ func (d *detailModel) updateViewing(msg tea.Msg) (tea.Cmd, bool) {
 		return d.startInput(ikComment, ""), false
 	case "s":
 		d.startRun()
+	case "S":
+		return d.startInput(ikCron, ""), false
 	case "w":
 		d.toggleWorktree()
+	case "X":
+		d.unschedule()
 	case "enter":
 		if d.field == dfPoints {
 			cur := ""
@@ -226,6 +235,20 @@ func (d *detailModel) startRun() {
 		return
 	}
 	if _, err := d.runMgr.Start(d.issue); err != nil {
+		d.err = err.Error()
+		return
+	}
+	d.err = ""
+	d.reload()
+}
+
+// unschedule removes this ticket's most recent schedule (the one shown at the top
+// of the sidebar list), so a mis-entered or no-longer-wanted cron can be undone.
+func (d *detailModel) unschedule() {
+	if d.sched == nil || len(d.schedules) == 0 {
+		return
+	}
+	if err := d.sched.Remove(d.schedules[0].ID); err != nil {
 		d.err = err.Error()
 		return
 	}
@@ -288,6 +311,8 @@ func (d *detailModel) startInput(kind inputKind, value string) tea.Cmd {
 		ti.Placeholder = "tag name"
 	case ikComment:
 		ti.Placeholder = "comment"
+	case ikCron:
+		ti.Placeholder = "cron e.g. 0 9 * * * (min hour dom mon dow)"
 	}
 	d.input = ti
 	d.inputKind = kind
@@ -344,6 +369,17 @@ func (d *detailModel) submitInput(value string) {
 			return
 		}
 		if _, err := d.store.AddComment(core.Comment{IssueID: d.issue.ID, Body: value}); err != nil {
+			d.err = err.Error()
+		}
+	case ikCron:
+		if value == "" {
+			return
+		}
+		if d.sched == nil {
+			d.err = "scheduler unavailable"
+			return
+		}
+		if _, err := d.sched.Add(d.issue.ID, value, false); err != nil {
 			d.err = err.Error()
 		}
 	}

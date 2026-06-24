@@ -10,6 +10,7 @@ import (
 	"github.com/03-CiprianoG/jeera/internal/core"
 	"github.com/03-CiprianoG/jeera/internal/mcp"
 	"github.com/03-CiprianoG/jeera/internal/run"
+	"github.com/03-CiprianoG/jeera/internal/schedule"
 	"github.com/03-CiprianoG/jeera/internal/store"
 	"github.com/03-CiprianoG/jeera/internal/tui/theme"
 )
@@ -32,6 +33,7 @@ type Model struct {
 	store  *store.Store
 	mcp    *mcp.Server // nil when started with --no-mcp
 	runMgr *run.Manager
+	sched  *schedule.Scheduler // nil when scheduling is unavailable
 	theme  theme.Theme
 	keys   keyMap
 
@@ -56,13 +58,14 @@ type Model struct {
 	errText   string
 }
 
-// New builds the root model over a store, an optional running MCP server, and
-// the run manager that starts agents.
-func New(st *store.Store, mcpSrv *mcp.Server, mgr *run.Manager) Model {
+// New builds the root model over a store, an optional running MCP server, the
+// run manager that starts agents, and the scheduler that fires timed runs.
+func New(st *store.Store, mcpSrv *mcp.Server, mgr *run.Manager, sched *schedule.Scheduler) Model {
 	m := Model{
 		store:  st,
 		mcp:    mcpSrv,
 		runMgr: mgr,
+		sched:  sched,
 		theme:  theme.New(),
 		keys:   newKeyMap(),
 	}

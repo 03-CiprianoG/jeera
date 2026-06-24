@@ -163,7 +163,13 @@ func (m Model) updateBoard(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if iss, ok := m.selectedIssue(); ok {
 			id := iss.ID
 			m.confirm = fmt.Sprintf("Delete %s — %s?", iss.Key, truncate(iss.Title, 40))
+			sched := m.sched
 			m.onConfirm = func() tea.Cmd {
+				// Stop any live cron jobs first — the schedule rows cascade away with
+				// the issue, but the in-memory jobs would otherwise keep firing.
+				if sched != nil {
+					sched.RemoveForIssue(id)
+				}
 				if err := m.store.DeleteIssue(id); err != nil {
 					return reportErr(err)
 				}
@@ -177,7 +183,7 @@ func (m Model) updateBoard(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.moveSelected(-1)
 	case key.Matches(msg, m.keys.Enter):
 		if iss, ok := m.selectedIssue(); ok {
-			m.detail = newDetail(m.store, m.runMgr, m.theme, iss.ID, m.width, m.height)
+			m.detail = newDetail(m.store, m.runMgr, m.sched, m.theme, iss.ID, m.width, m.height)
 			m.mode = modeDetail
 		}
 	}

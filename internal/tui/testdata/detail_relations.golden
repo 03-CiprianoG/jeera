@@ -1,15 +1,18 @@
  JEE-1  story  ● To Do                                                                     esc back 
    Overview    Agent    Relations    Files    Activity                                              
-─━━━━━━━━━━━━───────────────────────────────────────────                                            
-Build the board                                              ▸ Status   To Do                       
-                                                               Type     story                       
-                                                               Priority △ high                      
-  ## Goal                                                      Points   5                           
-                                                               Sprint   —                           
-  Build a calm, keyboard-driven board.                         Epic     —                           
-                                                               Tags     #ui                         
-  • columns by status                                                                               
-  • model-assignee cards                                                                            
+──────────────────────━━━━━━━━━━━━━─────────────────────                                            
+Hierarchy                                                                                           
+                                                                                                    
+  Epic      JEE-2                                                                                   
+  Parent    —                                                                                       
+                                                                                                    
+Children                                                                                            
+                                                                                                    
+  JEE-3     Render the columns                                                                      
+                                                                                                    
+Links                                                                                               
+                                                                                                    
+  blocks      JEE-4 Theme tokens                                                                    
                                                                                                     
                                                                                                     
                                                                                                     
@@ -24,7 +27,4 @@ Build the board                                              ▸ Status   To Do
                                                                                                     
                                                                                                     
                                                                                                     
-                                                                                                    
-                                                                                                    
-                                                                                                    
- tab tabs  j/k field  h/l change  e describe  esc back                                              
+ tab tabs  esc back                                                                                 

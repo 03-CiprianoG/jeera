@@ -40,34 +40,10 @@ func (m Model) renderHeader() string {
 // the inactive ones sit muted on a light hairline. The in-ticket tab strip is
 // intended to adopt this same treatment, so the two read as one system.
 func (m Model) renderNavbar() string {
-	t := m.theme
-	items := []struct {
-		v     view
-		label string
-	}{
-		{viewBoard, "Board"},
-		{viewBacklog, "Backlog"},
-		{viewSprints, "Sprints"},
-		{viewRuns, "Runs"},
-	}
-
-	labels := make([]string, len(items))
-	// The underline starts under the row's single leading space, then tracks each
-	// tab's full width so the accent sits squarely beneath the active label.
-	rule := lipgloss.NewStyle().Foreground(t.P.Border).Render("─")
-	for i, it := range items {
-		if it.v == m.view {
-			labels[i] = t.TabActive.Render(it.label)
-			rule += lipgloss.NewStyle().Foreground(t.P.Focus).Render(strings.Repeat("━", lipgloss.Width(labels[i])))
-		} else {
-			labels[i] = t.Tab.Render(it.label)
-			rule += lipgloss.NewStyle().Foreground(t.P.Border).Render(strings.Repeat("─", lipgloss.Width(labels[i])))
-		}
-	}
-	tabs := " " + lipgloss.JoinHorizontal(lipgloss.Top, labels...)
-
-	band := lipgloss.NewStyle().Background(t.P.BgSurface).Width(m.width)
-	return lipgloss.JoinVertical(lipgloss.Left, band.Render(tabs), band.Render(rule))
+	// Labels are in view-enum order (viewBoard … viewRuns), so the active index is
+	// just the view itself.
+	labels := []string{"Board", "Backlog", "Sprints", "Runs"}
+	return tabStrip(m.theme, m.width, labels, int(m.view))
 }
 
 // renderFooter is the bottom status bar: key hints on the left, transient

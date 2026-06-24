@@ -10,6 +10,7 @@ import (
 	"charm.land/bubbles/v2/textinput"
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/03-CiprianoG/jeera/internal/core"
 	"github.com/03-CiprianoG/jeera/internal/run"
@@ -54,6 +55,35 @@ const (
 	ikAttach
 )
 
+// detailTab is the active section of the ticket view. The tabs split the ticket
+// the way the navbar splits the app — Tab/Shift+Tab move between them — and the
+// tab strip uses the same treatment as the navbar so the two read as one system.
+type detailTab int
+
+const (
+	tabOverview  detailTab = iota // description + the core metadata fields
+	tabAgent                      // who runs it, its runs and schedules
+	tabRelations                  // epic, parent, children and links
+	tabFiles                      // attachments
+	tabActivity                   // the comment timeline
+	tabCount
+)
+
+var detailTabLabels = []string{"Overview", "Agent", "Relations", "Files", "Activity"}
+
+// fields lists the cyclable metadata fields shown on a tab, in display order.
+// Only Overview and Agent carry fields; the others are read/act views.
+func (t detailTab) fields() []detailField {
+	switch t {
+	case tabOverview:
+		return []detailField{dfStatus, dfType, dfPriority, dfPoints, dfSprint, dfEpic, dfTags}
+	case tabAgent:
+		return []detailField{dfProvider, dfModel, dfEffort}
+	default:
+		return nil
+	}
+}
+
 // detailModel is the full-screen ticket view: a Glamour-rendered, scrollable
 // description on the left, an editable metadata sidebar on the right, and the
 // activity timeline below. Edits persist to the store immediately and the view
@@ -67,11 +97,13 @@ type detailModel struct {
 	issueID int64
 	issue   core.Issue
 
-	statuses  []core.Status
-	sprints   []core.Sprint
-	epics     []core.Issue
-	issueTags []core.Tag
-	links     []store.LinkedIssue
+	statuses    []core.Status
+	sprints     []core.Sprint
+	epics       []core.Issue
+	issueTags   []core.Tag
+	links       []store.LinkedIssue
+	children    []core.Issue
+	parent      *core.Issue
 	comments    []core.Comment
 	runs        []core.Run
 	schedules   []core.Schedule
@@ -82,8 +114,10 @@ type detailModel struct {
 	input     textinput.Model
 	inputKind inputKind
 
-	mode  detailMode
-	field detailField
+	mode      detailMode
+	tab       detailTab
+	field     detailField
+	attachSel int // selected attachment on the Files tab
 
 	width, height int
 	err           string
@@ -122,21 +156,20 @@ func (d *detailModel) descWidth() int {
 	return w
 }
 
+// bodyHeight is the active tab's content region: the screen minus the header (1),
+// the tab strip and the footer (1). The strip can wrap to more than one visual row
+// on a narrow terminal, so we measure it rather than assume two rows — that keeps
+// the footer on screen at every width.
+func (d *detailModel) tabStripHeight() int {
+	return lipgloss.Height(tabStrip(d.theme, d.width, detailTabLabels, int(d.tab)))
+}
+
 func (d *detailModel) bodyHeight() int {
-	// header (1) + rule (1) + footer (1) + comments block (up to 6).
-	h := d.height - 3 - d.commentsHeight()
+	h := d.height - 2 - d.tabStripHeight()
 	if h < 3 {
 		h = 3
 	}
 	return h
-}
-
-func (d *detailModel) commentsHeight() int {
-	n := len(d.comments)
-	if n > 4 {
-		n = 4
-	}
-	return n + 1 // title line
 }
 
 func (d *detailModel) reload() {
@@ -151,10 +184,24 @@ func (d *detailModel) reload() {
 	d.epics, _ = d.store.ListIssues(store.IssueFilter{ProjectID: iss.ProjectID, Type: core.TypeEpic})
 	d.issueTags, _ = d.store.ListIssueTags(iss.ID)
 	d.links, _ = d.store.ListLinks(iss.ID)
+	id := iss.ID
+	d.children, _ = d.store.ListIssues(store.IssueFilter{ProjectID: iss.ProjectID, ParentID: &id})
+	d.parent = nil
+	if iss.ParentID != nil {
+		if p, err := d.store.GetIssue(*iss.ParentID); err == nil {
+			d.parent = &p
+		}
+	}
 	d.comments, _ = d.store.ListComments(iss.ID)
 	d.runs, _ = d.store.ListRuns(iss.ID)
 	d.schedules, _ = d.store.ListSchedules(iss.ID)
 	d.attachments, _ = d.store.ListAttachments(iss.ID)
+	if d.attachSel >= len(d.attachments) {
+		d.attachSel = len(d.attachments) - 1
+	}
+	if d.attachSel < 0 {
+		d.attachSel = 0
+	}
 	d.vp.SetHeight(d.descViewHeight())
 	d.renderDescription()
 }
@@ -187,51 +234,81 @@ func (d *detailModel) updateViewing(msg tea.Msg) (tea.Cmd, bool) {
 	switch key.String() {
 	case "esc", "q":
 		return nil, true
+	case "tab":
+		d.switchTab(+1)
+	case "shift+tab":
+		d.switchTab(-1)
 	case "j":
-		d.field = (d.field + 1) % dfFieldCount
+		d.moveCursor(+1)
 	case "k":
-		d.field = (d.field - 1 + dfFieldCount) % dfFieldCount
+		d.moveCursor(-1)
 	case "l", "right":
-		d.cycleField(+1)
+		if len(d.tab.fields()) > 0 {
+			d.cycleField(+1)
+		}
 	case "h", "left":
-		d.cycleField(-1)
+		if len(d.tab.fields()) > 0 {
+			d.cycleField(-1)
+		}
 	case "up", "down", "pgup", "pgdown", "ctrl+u", "ctrl+d":
-		var cmd tea.Cmd
-		d.vp, cmd = d.vp.Update(msg)
-		return cmd, false
+		if d.tab == tabOverview { // the description is the only scrollable pane
+			var cmd tea.Cmd
+			d.vp, cmd = d.vp.Update(msg)
+			return cmd, false
+		}
 	case "e":
-		return d.startEditDesc(), false
+		if d.tab == tabOverview {
+			return d.startEditDesc(), false
+		}
 	case "c":
-		return d.startInput(ikComment, ""), false
+		if d.tab == tabActivity {
+			return d.startInput(ikComment, ""), false
+		}
 	case "A":
-		return d.startInput(ikAttach, ""), false
+		if d.tab == tabFiles {
+			return d.startInput(ikAttach, ""), false
+		}
 	case "o":
-		d.openAttachment()
+		if d.tab == tabFiles {
+			d.openAttachment()
+		}
 	case "s":
-		d.startRun()
+		if d.tab == tabAgent {
+			d.startRun()
+		}
 	case "D":
-		d.startWithChildren()
+		if d.tab == tabAgent {
+			d.startWithChildren()
+		}
 	case "d":
-		return d.discuss(), false
+		if d.tab == tabAgent {
+			return d.discuss(), false
+		}
 	case "S":
-		return d.startInput(ikCron, ""), false
+		if d.tab == tabAgent {
+			return d.startInput(ikCron, ""), false
+		}
 	case "w":
-		d.toggleWorktree()
+		if d.tab == tabAgent {
+			d.toggleWorktree()
+		}
 	case "X":
-		d.unschedule()
+		if d.tab == tabAgent {
+			d.unschedule()
+		}
 	case "enter":
-		if d.field == dfPoints {
+		if d.tab == tabOverview && d.field == dfPoints {
 			cur := ""
 			if d.issue.StoryPoints != nil {
 				cur = strconv.Itoa(*d.issue.StoryPoints)
 			}
 			return d.startInput(ikPoints, cur), false
 		}
-		if d.field == dfTags {
+		if d.tab == tabOverview && d.field == dfTags {
 			return d.startInput(ikTag, ""), false
 		}
 	case "x":
-		if d.field == dfTags && len(d.issueTags) > 0 {
+		if d.tab == tabOverview && d.field == dfTags && len(d.issueTags) > 0 {
 			last := d.issueTags[len(d.issueTags)-1]
 			if err := d.store.UntagIssue(d.issue.ID, last.ID); err != nil {
 				d.err = err.Error()
@@ -240,6 +317,36 @@ func (d *detailModel) updateViewing(msg tea.Msg) (tea.Cmd, bool) {
 		}
 	}
 	return nil, false
+}
+
+// switchTab moves to the next/previous tab and lands the field cursor on the new
+// tab's first field, so h/l always has something valid to cycle.
+func (d *detailModel) switchTab(dir int) {
+	d.tab = detailTab(wrap(int(d.tab)+dir, int(tabCount)))
+	if fs := d.tab.fields(); len(fs) > 0 {
+		d.field = fs[0]
+	}
+}
+
+// moveCursor walks the current tab's selectable rows: the metadata fields on
+// Overview/Agent, the attachment list on Files. Other tabs have no row cursor.
+func (d *detailModel) moveCursor(dir int) {
+	switch d.tab {
+	case tabOverview, tabAgent:
+		fs := d.tab.fields()
+		if len(fs) == 0 {
+			return
+		}
+		cur := idxOf(fs, d.field)
+		if cur < 0 {
+			cur = 0
+		}
+		d.field = fs[wrap(cur+dir, len(fs))]
+	case tabFiles:
+		if len(d.attachments) > 0 {
+			d.attachSel = wrap(d.attachSel+dir, len(d.attachments))
+		}
+	}
 }
 
 // startRun launches an agent on this ticket. The new run appears in the runs
@@ -326,14 +433,23 @@ func (d *detailModel) toggleWorktree() {
 	d.reload()
 }
 
-// openAttachment opens the most recent attachment (the top of the sidebar list)
-// in the user's default app or browser.
+// selectedAttachment returns the attachment under the Files cursor, if any.
+func (d *detailModel) selectedAttachment() (core.Attachment, bool) {
+	if d.attachSel < 0 || d.attachSel >= len(d.attachments) {
+		return core.Attachment{}, false
+	}
+	return d.attachments[d.attachSel], true
+}
+
+// openAttachment opens the selected attachment (on the Files tab) in the user's
+// default app or browser.
 func (d *detailModel) openAttachment() {
-	if len(d.attachments) == 0 {
+	a, ok := d.selectedAttachment()
+	if !ok {
 		d.err = "no attachments to open"
 		return
 	}
-	if err := openExternal(d.attachments[0].Path); err != nil {
+	if err := openExternal(a.Path); err != nil {
 		d.err = err.Error()
 		return
 	}

@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
@@ -227,6 +228,43 @@ func TestDetailScheduleRejectsBadCron(t *testing.T) {
 	d.reload()
 	if len(d.schedules) != 0 {
 		t.Errorf("a rejected schedule should not persist, got %+v", d.schedules)
+	}
+}
+
+func TestDetailAddAttachment(t *testing.T) {
+	d, st, iss := newDetailForTest(t)
+
+	// A URL attachment.
+	d.inputKind = ikAttach
+	d.submitInput("https://example.com/design")
+	// A file attachment (relative path is absolutized on save).
+	d.inputKind = ikAttach
+	d.submitInput("./docs/diagram.png")
+
+	got, _ := st.ListAttachments(iss.ID)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 attachments, got %d", len(got))
+	}
+	// Newest first: the file was added last.
+	if got[0].IsURL() {
+		t.Errorf("most recent should be the file, got %+v", got[0])
+	}
+	if !strings.HasPrefix(got[0].Path, "/") {
+		t.Errorf("file path should be absolutized, got %q", got[0].Path)
+	}
+	if got[0].MIME != "image/png" {
+		t.Errorf("file mime = %q, want image/png", got[0].MIME)
+	}
+	if !got[1].IsURL() {
+		t.Errorf("oldest should be the URL, got %+v", got[1])
+	}
+}
+
+func TestDetailOpenNoAttachments(t *testing.T) {
+	d, _, _ := newDetailForTest(t)
+	d.openAttachment()
+	if d.err == "" {
+		t.Error("opening with no attachments should surface a message")
 	}
 }
 

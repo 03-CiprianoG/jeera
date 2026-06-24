@@ -48,7 +48,7 @@ Most tools bolt a chat box onto a GUI. Jeera inverts that. The agent isn't a fea
 | **Relationships** | ✅ | blocks / blocked-by / relates / duplicates, shown from both sides |
 | **Model assignees** | ✅ | Work is assigned to a *model* — provider + model + reasoning effort |
 | **Comments & activity** | ✅ | Humans and agent runs both post to the timeline |
-| **Attachments** | 🔜 | Files referenced by path; capability-gated inline image preview |
+| **Attachments** | ✅ | Links & files pinned to a ticket (`A`), opened externally (`o`); references, not bytes |
 | **Kanban board** (keyboard-first) | ✅ | vim-style navigation, create/rename/delete, move cards across columns, live refresh |
 | **Ticket detail** view | ✅ | Markdown edit/preview, in-place editing of status/type/priority/points/assignee/sprint/epic/tags, comments |
 | **Backlog · Sprints · Epics** views | 🔭 | Dedicated management screens (assignment already works from the ticket) |
@@ -57,7 +57,7 @@ Most tools bolt a chat box onto a GUI. Jeera inverts that. The agent isn't a fea
 
 | Feature | Status | Notes |
 |---|:---:|---|
-| **Embedded MCP server** | ✅ | Serves over local HTTP with `jeera` / `jeera --headless`; 15 typed tools for agents |
+| **Embedded MCP server** | ✅ | Serves over local HTTP with `jeera` / `jeera --headless`; 16 typed tools for agents |
 | **Start a ticket** | ✅ | Press `s` to spawn `claude`/`codex` on the issue; it drives the ticket over MCP, streamed into the Runs view |
 | **Run versioning** | ✅ | Every Start is a new, recorded run version with its provider/model/effort, session and status |
 | **Per-ticket git worktrees** | ✅ | Each run is isolated on its own branch (default on, toggle off with `w`) |
@@ -174,14 +174,14 @@ Chosen deliberately, not by default — every external API verified against curr
 Released under semantic versioning; each milestone is one or more pull requests.
 
 - [x] **Foundation** — domain model + local SQLite store
-- [x] **MCP server** — 15 typed tools over the shared store
+- [x] **MCP server** — 16 typed tools over the shared store
 - [x] **v0.1.0** — design system + Kanban board (first runnable release)
 - [x] **v0.2.0** — ticket detail view: rich-text editing + all Jira fields + comments
 - [x] **v0.3.0** — execution engine: Start / worktrees / runs / versioning
 - [x] **v0.4.0** — scheduling: cron a ticket to run itself, persisted and headless
 - [x] **v0.5.0** — settings: global → project → ticket config cascade, project repo paths
-- [x] **v0.6.0** — agent actions: Discuss/Expand + Start-with-children *(you are here)*
-- [ ] **v0.7.0** — attachments: links, file refs, external open
+- [x] **v0.6.0** — agent actions: Discuss/Expand + Start-with-children
+- [x] **v0.7.0** — attachments: links, file refs, external open *(you are here)*
 - [ ] **v1.0.0** — feature-complete, cross-platform release binaries
 
 ## Contributing

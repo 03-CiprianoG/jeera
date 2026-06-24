@@ -41,6 +41,8 @@ func RegisterAll(s *mcpsdk.Server, svc *Service) {
 		Description: "Add a comment to an issue's activity timeline."}, svc.addComment)
 	mcpsdk.AddTool(s, &mcpsdk.Tool{Name: "link_issues",
 		Description: "Create a relationship (blocks, blocked_by, relates, duplicates) between two issues."}, svc.linkIssues)
+	mcpsdk.AddTool(s, &mcpsdk.Tool{Name: "add_attachment",
+		Description: "Attach a URL or a file path to an issue (the reference is stored, not the file contents)."}, svc.addAttachment)
 	mcpsdk.AddTool(s, &mcpsdk.Tool{Name: "list_sprints",
 		Description: "List a project's sprints."}, svc.listSprints)
 	mcpsdk.AddTool(s, &mcpsdk.Tool{Name: "add_to_sprint",

@@ -22,6 +22,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/03-CiprianoG/jeera/internal/agent"
+	"github.com/03-CiprianoG/jeera/internal/config"
 	"github.com/03-CiprianoG/jeera/internal/core"
 	"github.com/03-CiprianoG/jeera/internal/store"
 	"github.com/03-CiprianoG/jeera/internal/worktree"
@@ -38,26 +39,33 @@ const killGrace = 10 * time.Second
 
 // Manager starts and tracks runs over the shared store.
 type Manager struct {
-	store   *store.Store
-	dataDir string        // base for run logs, MCP config files and worktrees
-	mcpURL  func() string // the live Jeera MCP URL (empty if the server is off)
+	store    *store.Store
+	dataDir  string                  // base for run logs, MCP config files and worktrees
+	mcpURL   func() string           // the live Jeera MCP URL (empty if the server is off)
+	defaults func() config.Defaults  // the live global defaults for the settings cascade
 
 	mu      sync.Mutex                   // guards cancels
 	cancels map[int64]context.CancelFunc // in-flight runs, by run id
 	wg      sync.WaitGroup               // tracks launch goroutines
 }
 
-// NewManager builds a run manager. mcpURL is a function so the live endpoint is
-// read at start time (the server may bind a fallback port).
-func NewManager(st *store.Store, dataDir string, mcpURL func() string) *Manager {
+// NewManager builds a run manager. mcpURL and defaults are functions so the live
+// values are read at start time (the server may bind a fallback port; the user
+// may edit the global defaults). Either may be nil, in which case sensible
+// built-ins are used.
+func NewManager(st *store.Store, dataDir string, mcpURL func() string, defaults func() config.Defaults) *Manager {
 	if mcpURL == nil {
 		mcpURL = func() string { return "" }
 	}
+	if defaults == nil {
+		defaults = func() config.Defaults { return config.Default().Defaults }
+	}
 	return &Manager{
-		store:   st,
-		dataDir: dataDir,
-		mcpURL:  mcpURL,
-		cancels: make(map[int64]context.CancelFunc),
+		store:    st,
+		dataDir:  dataDir,
+		mcpURL:   mcpURL,
+		defaults: defaults,
+		cancels:  make(map[int64]context.CancelFunc),
 	}
 }
 
@@ -120,23 +128,15 @@ func (m *Manager) prepare(issue core.Issue) (*plan, error) {
 		return nil, err
 	}
 
-	assignee := issue.Assignee
-	if assignee.IsZero() {
-		assignee = core.DefaultAssignee(core.ProviderClaude)
-	}
+	// Resolve the run settings through the issue → project → global cascade.
+	settings := config.ResolveRun(m.defaults(), project, issue)
+	assignee := settings.Assignee
 	prov := agent.For(assignee.Provider)
 	if prov == nil {
 		return nil, fmt.Errorf("no driver for provider %q", assignee.Provider)
 	}
-
-	permMode := issue.Settings.PermissionMode
-	if permMode == "" {
-		permMode = "bypassPermissions"
-	}
-	worktreeOn := true
-	if issue.WorktreeOn != nil {
-		worktreeOn = *issue.WorktreeOn
-	}
+	permMode := settings.PermissionMode
+	worktreeOn := settings.WorktreeOn
 
 	version, err := m.store.NextRunVersion(issue.ID)
 	if err != nil {

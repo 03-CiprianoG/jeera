@@ -125,6 +125,9 @@ func (m Model) updateBoard(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Runs):
 		m.recentRuns, _ = m.store.ListRecentRuns(50)
 		m.mode = modeRuns
+	case key.Matches(msg, m.keys.Settings):
+		m.settings = newSettings(m.cfg, m.theme, m.width, m.height)
+		m.mode = modeSettings
 	case key.Matches(msg, m.keys.Project):
 		m.mode = modeProjects
 		m.projSel = m.activeProjectIndex()

@@ -1,0 +1,16 @@
+╭─────────────────────────────────────────────────────────────────────────╮
+│                                                                         │
+│  Settings — global defaults                                             │
+│  Fallback run settings. A project or ticket can override any of these.  │
+│                                                                         │
+│  ▸ Provider    claude                                                   │
+│    Model       opus                                                     │
+│    Effort      medium                                                   │
+│    Worktree    on                                                       │
+│    Permission  bypassPermissions                                        │
+│                                                                         │
+│  MCP port: auto   (set JEERA_MCP_PORT or mcp_port in config.toml)       │
+│                                                                         │
+│  j/k field   h/l change   esc close                                     │
+│                                                                         │
+╰─────────────────────────────────────────────────────────────────────────╯

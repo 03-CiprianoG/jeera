@@ -52,7 +52,7 @@ func setup(t *testing.T) (*Manager, *store.Store, core.Issue) {
 		ProjectID: p.ID, Title: "Build it", Type: core.TypeStory,
 		Assignee: core.Assignee{Provider: core.ProviderClaude, Model: "opus", Effort: core.EffortHigh},
 	})
-	m := NewManager(st, t.TempDir(), func() string { return "http://127.0.0.1:7777" })
+	m := NewManager(st, t.TempDir(), func() string { return "http://127.0.0.1:7777" }, nil)
 	return m, st, iss
 }
 
@@ -205,7 +205,7 @@ func TestPrepareNoMCP(t *testing.T) {
 		Assignee: core.Assignee{Provider: core.ProviderClaude, Model: "opus"},
 	})
 	// MCP server off: prepare must write no mcp.json and omit --mcp-config.
-	m := NewManager(st, t.TempDir(), func() string { return "" })
+	m := NewManager(st, t.TempDir(), func() string { return "" }, nil)
 	pl, err := m.prepare(iss)
 	if err != nil {
 		t.Fatalf("prepare: %v", err)

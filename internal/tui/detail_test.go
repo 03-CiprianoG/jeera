@@ -180,7 +180,7 @@ func detailWithScheduler(t *testing.T) (*detailModel, *store.Store, core.Issue) 
 	p, _ := st.CreateProject(core.Project{Name: "Jeera", KeyPrefix: "JEE", RepoPath: "/tmp/jeera"})
 	iss, _ := st.CreateIssue(core.Issue{ProjectID: p.ID, Title: "nightly job"})
 
-	mgr := run.NewManager(st, t.TempDir(), func() string { return "" })
+	mgr := run.NewManager(st, t.TempDir(), func() string { return "" }, nil)
 	sched, err := schedule.New(st, mgr)
 	if err != nil {
 		t.Fatalf("schedule.New: %v", err)

@@ -5,6 +5,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/03-CiprianoG/jeera/internal/config"
 	"github.com/03-CiprianoG/jeera/internal/mcp"
 	"github.com/03-CiprianoG/jeera/internal/paths"
 	"github.com/03-CiprianoG/jeera/internal/run"
@@ -16,14 +17,20 @@ import (
 // until the user quits or the context is cancelled. The store's change events
 // are bridged into the program so the board refreshes the moment an agent writes
 // over MCP — the human's board and the agents never drift apart.
-func Run(ctx context.Context, st *store.Store, mcpSrv *mcp.Server) error {
+func Run(ctx context.Context, st *store.Store, mcpSrv *mcp.Server, cfgStore *config.Store) error {
+	// The settings cascade backs both the run manager's defaults and the settings
+	// view. Guard against a nil store so callers need not always supply one.
+	if cfgStore == nil {
+		cfgStore, _ = config.NewStore(config.Path())
+	}
+
 	// The run manager spawns agents and points them at this live MCP endpoint.
 	mgr := run.NewManager(st, paths.DataDir(), func() string {
 		if mcpSrv == nil {
 			return ""
 		}
 		return mcpSrv.Status().URL
-	})
+	}, cfgStore.Defaults)
 	// Cancel and reap any in-flight runs before the store closes, so no agent
 	// process is orphaned and no run writes to a torn-down database.
 	defer mgr.Shutdown()
@@ -42,7 +49,7 @@ func Run(ctx context.Context, st *store.Store, mcpSrv *mcp.Server) error {
 		sched = nil
 	}
 
-	model := New(st, mcpSrv, mgr, sched)
+	model := New(st, mcpSrv, mgr, sched, cfgStore)
 	p := tea.NewProgram(model)
 
 	// Bridge store change events → the program.

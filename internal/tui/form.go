@@ -49,13 +49,20 @@ func newCreateIssueForm() *formModel {
 }
 
 func newCreateProjectForm() *formModel {
+	// Pre-fill the repo path with the current directory — the common case is
+	// "point Jeera at the repo I'm in" — but let the user edit it.
+	repo := newField("/path/to/repo", 46, 300)
+	if cwd, err := os.Getwd(); err == nil {
+		repo.SetValue(cwd)
+	}
 	return &formModel{
 		kind:    formCreateProject,
 		heading: "New project",
-		labels:  []string{"Name", "Key prefix"},
+		labels:  []string{"Name", "Key prefix", "Repo path"},
 		fields: []textinput.Model{
 			newField("Project name", 46, 80),
 			newField("KEY, e.g. JEE", 46, 10),
+			repo,
 		},
 	}
 }
@@ -144,7 +151,10 @@ func (m Model) submitForm() (tea.Model, tea.Cmd) {
 
 	switch m.form.kind {
 	case formCreateProject:
-		repo, _ := os.Getwd()
+		repo := vals[2]
+		if repo == "" {
+			repo, _ = os.Getwd()
+		}
 		p, err := m.store.CreateProject(core.Project{Name: vals[0], KeyPrefix: vals[1], RepoPath: repo})
 		if err != nil {
 			return m, reportErr(err)

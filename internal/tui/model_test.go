@@ -59,6 +59,7 @@ func TestSubmitCreateProject(t *testing.T) {
 	m.form = newCreateProjectForm()
 	m.form.fields[0].SetValue("Web App")
 	m.form.fields[1].SetValue("web")
+	m.form.fields[2].SetValue("/repos/web-app")
 	m.mode = modeForm
 
 	next, _ := m.submitForm()
@@ -66,6 +67,9 @@ func TestSubmitCreateProject(t *testing.T) {
 
 	if m.active.KeyPrefix != "WEB" {
 		t.Errorf("new project not activated: %+v", m.active)
+	}
+	if m.active.RepoPath != "/repos/web-app" {
+		t.Errorf("repo path not captured: %q", m.active.RepoPath)
 	}
 	if m.mode != modeBoard {
 		t.Errorf("form should close after submit, mode=%v", m.mode)
@@ -156,7 +160,7 @@ func TestDeleteStopsSchedule(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = st.Close() })
-	mgr := run.NewManager(st, t.TempDir(), func() string { return "" })
+	mgr := run.NewManager(st, t.TempDir(), func() string { return "" }, nil)
 	sched, err := schedule.New(st, mgr)
 	if err != nil {
 		t.Fatal(err)
@@ -166,7 +170,7 @@ func TestDeleteStopsSchedule(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	m := New(st, nil, mgr, sched)
+	m := New(st, nil, mgr, sched, nil)
 	m.width, m.height = 100, 30
 	p := seedProject(t, st)
 	iss, _ := st.CreateIssue(core.Issue{ProjectID: p.ID, Title: "doomed but scheduled"})

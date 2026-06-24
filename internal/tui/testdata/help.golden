@@ -6,20 +6,20 @@
                                                                                                     
                                                                                                     
                                                                                                     
-      ╭──────────────────────────────────────────────────────────────────────────────────────╮      
-      │                                                                                      │      
-      │  Keys                                                                                │      
-      │                                                                                      │      
-      │  ↑/k      up            n        new      H        move left    m        mcp         │      
-      │  ↓/j      down          e        rename   L        move right   R        runs        │      
-      │  ←/h      prev column   x        delete   p        projects     r        refresh     │      
-      │  →/l      next column   enter    open                           ?        help        │      
-      │                                                                 q        quit        │      
-      │                                                                                      │      
-      │  press any key to close                                                              │      
-      │                                                                                      │      
-      ╰──────────────────────────────────────────────────────────────────────────────────────╯      
-                                                                                                    
+     ╭───────────────────────────────────────────────────────────────────────────────────────╮      
+     │                                                                                       │      
+     │  Keys                                                                                 │      
+     │                                                                                       │      
+     │  ↑/k      up            n        new      H        move left    m        mcp          │      
+     │  ↓/j      down          e        rename   L        move right   R        runs         │      
+     │  ←/h      prev column   x        delete   p        projects     ,        settings     │      
+     │  →/l      next column   enter    open                           r        refresh      │      
+     │                                                                 ?        help         │      
+     │                                                                 q        quit         │      
+     │                                                                                       │      
+     │  press any key to close                                                               │      
+     │                                                                                       │      
+     ╰───────────────────────────────────────────────────────────────────────────────────────╯      
                                                                                                     
                                                                                                     
                                                                                                     

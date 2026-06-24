@@ -27,15 +27,21 @@ Both front-ends share one `core` model and one `store`, so the human and the age
 - **MCP Go SDK** (`github.com/modelcontextprotocol/go-sdk`) for the agent server.
 - **Claude-first** AI, behind a pluggable provider interface.
 
-## Layout (target)
+## Layout
 ```
-cmd/            CLI entry: root = TUI + server; flags for --headless / --no-mcp
+main.go         CLI entry: root = TUI + MCP server; flags for --headless / --no-mcp / version
 internal/
-  core/         domain model (Issue, Board, Status, Priority, …)
-  store/        local-first persistence (system of record)
-  tui/          Bubble Tea board
-  mcp/          MCP HTTP server + tools, over the shared store
-  agent/        pluggable AI layer (Claude-first)
+  core/         domain model (Issue, Status, Priority, Run, Schedule, Attachment, …) + validation
+  store/        local-first SQLite persistence (system of record) + change-event bus
+  mcp/          MCP HTTP server + 16 typed tools, over the shared store
+  tui/          Bubble Tea board, ticket detail, runs/settings views, theme (the design system)
+  agent/        pluggable provider drivers (claude/codex) — arg construction + stream parsing
+  run/          execution engine: run manager, lifecycle, versioning, Start-with-children, Discuss
+  worktree/     git worktree add/list/remove wrappers
+  schedule/     gocron-backed persisted "Schedule Start"
+  config/       global TOML config + the issue→project→global settings cascade
+  paths/        XDG-aware data/config paths
+  version/      build identity (stamped by GoReleaser)
 ```
 
 ## Common commands

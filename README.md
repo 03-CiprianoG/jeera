@@ -9,12 +9,12 @@ A [lazygit](https://github.com/jesseduffield/lazygit)-inspired TUI that reimagin
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/03-CiprianoG/jeera/actions/workflows/ci.yml/badge.svg)](https://github.com/03-CiprianoG/jeera/actions/workflows/ci.yml)
 ![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)
-![Status](https://img.shields.io/badge/status-pre--alpha-orange)
+[![Release](https://img.shields.io/github/v/release/03-CiprianoG/jeera?color=8891D9)](https://github.com/03-CiprianoG/jeera/releases/latest)
 
 </div>
 
-> [!WARNING]
-> **🚧 Built in the open.** The architecture is settled and the implementation lands incrementally via pull requests, each one tested and released under [semantic versioning](https://semver.org). The **Status** column below tracks what's usable today versus what's on the way.
+> [!NOTE]
+> **Built in the open.** Jeera reached **v1.0.0** — feature-complete and stable — over a series of tested, [semantically versioned](https://semver.org) releases. The **Status** column below tracks what's available today; a couple of nice-to-haves (dedicated backlog/sprint/epic screens) are still on the way.
 
 ## What is Jeera?
 
@@ -103,12 +103,20 @@ Most tools bolt a chat box onto a GUI. Jeera inverts that. The agent isn't a fea
 
 ## Install
 
-> Pre-built release binaries and `go install` land with **v0.1.0**. For now, build from source.
+**Pre-built binaries** — download the archive for your OS/arch from the [latest release](https://github.com/03-CiprianoG/jeera/releases/latest), extract, and put `jeera` on your `PATH`.
+
+**`go install`** (requires Go 1.25+):
+
+```sh
+go install github.com/03-CiprianoG/jeera@latest
+```
+
+**From source:**
 
 ```sh
 git clone https://github.com/03-CiprianoG/jeera.git
 cd jeera
-go build -o jeera .     # requires Go 1.25+ ; produces a single static binary (CGO-free)
+go build -o jeera .     # single static binary (CGO-free)
 ./jeera version
 ```
 
@@ -181,8 +189,8 @@ Released under semantic versioning; each milestone is one or more pull requests.
 - [x] **v0.4.0** — scheduling: cron a ticket to run itself, persisted and headless
 - [x] **v0.5.0** — settings: global → project → ticket config cascade, project repo paths
 - [x] **v0.6.0** — agent actions: Discuss/Expand + Start-with-children
-- [x] **v0.7.0** — attachments: links, file refs, external open *(you are here)*
-- [ ] **v1.0.0** — feature-complete, cross-platform release binaries
+- [x] **v0.7.0** — attachments: links, file refs, external open
+- [x] **v1.0.0** — feature-complete; GoReleaser cross-platform binaries + `go install` *(you are here)*
 
 ## Contributing
 

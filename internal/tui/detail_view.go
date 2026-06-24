@@ -162,8 +162,11 @@ func (d *detailModel) renderFooter() string {
 		hint = strings.Join(parts, t.HelpDesc.Render("  "))
 	}
 	right := ""
-	if d.err != "" {
+	switch {
+	case d.err != "":
 		right = t.Error.Render("! " + truncate(d.err, d.width/3))
+	case d.notice != "":
+		right = t.Toast.Render(truncate(d.notice, d.width/3))
 	}
 	inner := spread(truncate(hint, d.width-2-lipgloss.Width(right)-1), right, d.width-2)
 	return lipgloss.NewStyle().Background(t.P.BgSurface).Width(d.width).Render(" " + inner + " ")

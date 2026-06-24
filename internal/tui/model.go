@@ -49,6 +49,7 @@ type Model struct {
 	board      boardData
 	activeRuns int
 	recentRuns []core.Run
+	runsCursor int // selected row in the Runs overlay
 
 	colIdx, cardIdx int
 
@@ -161,6 +162,17 @@ func (m *Model) clampSelection() {
 	}
 }
 
+// clampRunsCursor keeps the Runs-overlay selection within the live run list,
+// which changes under it as agents start and finish.
+func (m *Model) clampRunsCursor() {
+	if m.runsCursor >= len(m.recentRuns) {
+		m.runsCursor = len(m.recentRuns) - 1
+	}
+	if m.runsCursor < 0 {
+		m.runsCursor = 0
+	}
+}
+
 // selectedIssue returns the currently highlighted issue, if any.
 func (m Model) selectedIssue() (core.Issue, bool) {
 	if m.colIdx < 0 || m.colIdx >= len(m.board.columns) {
@@ -188,7 +200,22 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.detail.reload()
 		}
 		if m.mode == modeRuns {
+			// Re-anchor the selection by run ID: a run starting while the overlay is
+			// open prepends to the list, which would otherwise slide the cursor onto
+			// a different run.
+			prevID := int64(0)
+			if m.runsCursor >= 0 && m.runsCursor < len(m.recentRuns) {
+				prevID = m.recentRuns[m.runsCursor].ID
+			}
 			m.recentRuns, _ = m.store.ListRecentRuns(50)
+			m.runsCursor = 0
+			for i, r := range m.recentRuns {
+				if r.ID == prevID {
+					m.runsCursor = i
+					break
+				}
+			}
+			m.clampRunsCursor()
 		}
 		return m, nil
 	case errMsg:
@@ -201,16 +228,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case clearToastMsg:
 		m.toastText = ""
-		return m, nil
-	case discussFinishedMsg:
-		// The interactive session may have changed the ticket; reload both views.
-		if msg.err != nil {
-			m.errText = "discuss: " + msg.err.Error()
-		}
-		m.reload()
-		if m.mode == modeDetail && m.detail != nil {
-			m.detail.reload()
-		}
 		return m, nil
 	case tea.KeyPressMsg:
 		return m.handleKey(msg)
@@ -258,8 +275,7 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case modeDetail:
 		return m.routeDetail(msg)
 	case modeRuns:
-		m.mode = modeBoard // any key closes the runs view
-		return m, nil
+		return m.updateRuns(msg)
 	case modeSettings:
 		if m.settings != nil && m.settings.update(msg) {
 			m.settings = nil

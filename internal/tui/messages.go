@@ -22,10 +22,6 @@ type toastMsg struct{ text string }
 // clearToastMsg clears the current toast.
 type clearToastMsg struct{}
 
-// discussFinishedMsg is delivered when an interactive "Discuss" session (run via
-// tea.ExecProcess) exits and the TUI resumes; the ticket may have changed.
-type discussFinishedMsg struct{ err error }
-
 // toast returns a command that shows text now and clears it after a short delay.
 func toast(text string) tea.Cmd {
 	return tea.Batch(

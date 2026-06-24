@@ -84,6 +84,15 @@ func TestCodexArgs(t *testing.T) {
 	}
 }
 
+func TestResumeArgs(t *testing.T) {
+	if got := For(core.ProviderClaude).ResumeArgs("abc-123"); argString(got) != "--resume abc-123" {
+		t.Errorf("claude resume args = %v, want [--resume abc-123]", got)
+	}
+	if got := For(core.ProviderCodex).ResumeArgs("uuid-9"); argString(got) != "resume uuid-9" {
+		t.Errorf("codex resume args = %v, want [resume uuid-9]", got)
+	}
+}
+
 func TestClaudeParseLine(t *testing.T) {
 	p := For(core.ProviderClaude)
 	cases := []struct {

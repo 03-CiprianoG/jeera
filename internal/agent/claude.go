@@ -46,6 +46,13 @@ func (claudeProvider) Args(spec RunSpec) []string {
 	return args
 }
 
+// ResumeArgs re-opens a claude session interactively by its id. `--resume <id>`
+// (the long form of `-r`) drops the user back into the conversation; with no -p
+// it runs as a normal interactive session in whatever terminal launches it.
+func (claudeProvider) ResumeArgs(sessionID string) []string {
+	return []string{"--resume", sessionID}
+}
+
 // claudeLine mirrors the fields of claude's stream-json events that we use.
 type claudeLine struct {
 	Type      string `json:"type"`

@@ -53,6 +53,10 @@ type Provider interface {
 	Binary() string
 	// Args returns the command-line arguments (excluding the binary) for a run.
 	Args(spec RunSpec) []string
+	// ResumeArgs returns the arguments (excluding the binary) that re-open an
+	// existing session interactively by its session/thread id, so a finished run
+	// can be continued in a terminal (e.g. `claude --resume <id>`).
+	ResumeArgs(sessionID string) []string
 	// PreassignsSession reports whether SessionID may be set before the run
 	// starts (claude) or must be read back from the output (codex).
 	PreassignsSession() bool

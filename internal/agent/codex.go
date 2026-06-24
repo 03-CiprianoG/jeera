@@ -41,6 +41,12 @@ func (codexProvider) Args(spec RunSpec) []string {
 	return args
 }
 
+// ResumeArgs re-opens a codex session interactively by its thread id. `codex
+// resume <id>` takes the session id (a UUID) as its first positional argument.
+func (codexProvider) ResumeArgs(sessionID string) []string {
+	return []string{"resume", sessionID}
+}
+
 // codexLine mirrors the codex JSONL events we use.
 type codexLine struct {
 	Type     string `json:"type"`

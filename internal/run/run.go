@@ -40,9 +40,9 @@ const killGrace = 10 * time.Second
 // Manager starts and tracks runs over the shared store.
 type Manager struct {
 	store    *store.Store
-	dataDir  string                  // base for run logs, MCP config files and worktrees
-	mcpURL   func() string           // the live Jeera MCP URL (empty if the server is off)
-	defaults func() config.Defaults  // the live global defaults for the settings cascade
+	dataDir  string                 // base for run logs, MCP config files and worktrees
+	mcpURL   func() string          // the live Jeera MCP URL (empty if the server is off)
+	defaults func() config.Defaults // the live global defaults for the settings cascade
 
 	ctx  context.Context    // lifecycle; cancelled by Shutdown
 	stop context.CancelFunc // cancels ctx
@@ -214,10 +214,10 @@ func (m *Manager) dependencyOrder(issues []core.Issue) []core.Issue {
 
 // DiscussCommand builds the interactive "Expand / Discuss" command: an
 // interactive claude session with Jeera's MCP attached and a preloaded prompt to
-// open the ticket for a conversation rather than autonomous work. It is meant for
-// tea.ExecProcess, which suspends the TUI while the session runs. It writes a
-// small MCP config under the data dir and errors if no MCP endpoint is live (the
-// agent would have nothing to load the ticket from).
+// open the ticket for a conversation rather than autonomous work. It is the raw
+// provider command; the TUI hosts it in a new terminal window (never inline). It
+// writes a small MCP config under the data dir and errors if no MCP endpoint is
+// live (the agent would have nothing to load the ticket from).
 func (m *Manager) DiscussCommand(issue core.Issue) (*exec.Cmd, error) {
 	mcpURL := m.mcpURL()
 	if mcpURL == "" {
@@ -246,6 +246,52 @@ func (m *Manager) DiscussCommand(issue core.Issue) (*exec.Cmd, error) {
 		cmd.Dir = project.RepoPath
 	}
 	return cmd, nil
+}
+
+// ResumeCommand builds the command that re-opens a past run's agent session
+// interactively, so the user can pick the conversation back up in their own
+// terminal (e.g. `claude --resume <id>`). It is the raw provider command — the
+// caller (the TUI) wraps it in a terminal emulator to give it a window. It runs
+// in the run's worktree while that still exists, else the project repo, and
+// errors if the run never captured a session id or its provider is unknown.
+func (m *Manager) ResumeCommand(r core.Run) (*exec.Cmd, error) {
+	prov := agent.For(r.Provider)
+	if prov == nil {
+		return nil, fmt.Errorf("no driver for provider %q", r.Provider)
+	}
+	if r.SessionID == "" {
+		return nil, fmt.Errorf("run v%d has no session to resume", r.Version)
+	}
+	dir, err := m.resumeDir(r)
+	if err != nil {
+		return nil, err
+	}
+	cmd := exec.Command(prov.Binary(), prov.ResumeArgs(r.SessionID)...)
+	cmd.Dir = dir
+	return cmd, nil
+}
+
+// resumeDir is the working directory a resumed run should open in: its worktree
+// while that still exists on disk, otherwise the project repo. A run whose
+// worktree was pruned can still be resumed against the repo it branched from.
+func (m *Manager) resumeDir(r core.Run) (string, error) {
+	if r.WorktreePath != "" {
+		if fi, err := os.Stat(r.WorktreePath); err == nil && fi.IsDir() {
+			return r.WorktreePath, nil
+		}
+	}
+	issue, err := m.store.GetIssue(r.IssueID)
+	if err != nil {
+		return "", err
+	}
+	project, err := m.store.GetProject(issue.ProjectID)
+	if err != nil {
+		return "", err
+	}
+	if project.RepoPath == "" {
+		return "", fmt.Errorf("project %s has no repo path set", project.KeyPrefix)
+	}
+	return project.RepoPath, nil
 }
 
 // Stop cancels a single in-flight run, killing its process.

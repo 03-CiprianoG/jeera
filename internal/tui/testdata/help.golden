@@ -6,15 +6,15 @@
                                                                                                     
                                                                                                     
                                                                                                     
-                                                                                                    
       ╭──────────────────────────────────────────────────────────────────────────────────────╮      
       │                                                                                      │      
       │  Keys                                                                                │      
       │                                                                                      │      
-      │  ↑/k      up            n        new      H        move left    r        refresh     │      
-      │  ↓/j      down          e        rename   L        move right   ?        help        │      
-      │  ←/h      prev column   x        delete   p        projects     q        quit        │      
-      │  →/l      next column   enter    open     m        mcp                               │      
+      │  ↑/k      up            n        new      H        move left    m        mcp         │      
+      │  ↓/j      down          e        rename   L        move right   R        runs        │      
+      │  ←/h      prev column   x        delete   p        projects     r        refresh     │      
+      │  →/l      next column   enter    open                           ?        help        │      
+      │                                                                 q        quit        │      
       │                                                                                      │      
       │  press any key to close                                                              │      
       │                                                                                      │      

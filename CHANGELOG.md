@@ -6,6 +6,41 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-06-24
+
+The execution engine: a ticket isn't just something you track — press **Start**
+and Jeera puts a real coding agent to work on it.
+
+### Added
+- **Execution engine** (`internal/run`): press `s` on a ticket to spawn the
+  assignee's CLI (`claude`/`codex`) as a background process that actually does the
+  work. The run is pointed back at Jeera's own MCP server, so the agent moves the
+  very ticket it's running — To Do → In Progress → Done — and the board reflects it
+  live. Output streams to a per-run log; the session id and final status are
+  recorded.
+- **Provider drivers** (`internal/agent`): a pluggable `Provider` interface with
+  Claude-first `claude` and `codex` drivers — exact CLI argument construction,
+  stream-json / JSONL event parsing, and session-id capture (claude pre-assigns a
+  `--session-id`; codex's thread id is read from its first event). No API keys, no
+  SDKs — it drives the CLIs already on your machine.
+- **Per-ticket git worktrees** (`internal/worktree`): each run is isolated on its
+  own `jeera/<key>-v<n>` branch in a dedicated worktree by default (`git worktree`,
+  never `rm -rf`); toggle it off with `w` to run directly in the repo.
+- **Run versioning** (`internal/store/runs.go`): every Start is a new, monotonic
+  run version on the ticket, recorded with provider/model/effort, worktree, branch,
+  session id, status, and exit code.
+- **Runs view** (`internal/tui/runs.go`): press `R` for the global run list —
+  active and recent runs with their ticket, version and live status; the ticket
+  detail sidebar shows the worktree state and a ticket's recent runs.
+- **Concise run prompt** (`internal/agent/prompt.go`): a tight, reliable template
+  that tells the agent to read the ticket over MCP, transition it, implement and
+  verify the work, then comment and close it (or mark it Blocked).
+
+### Verified
+- A real end-to-end run (`internal/run/e2e_test.go`, build-tag `e2e`): a live
+  `claude` agent spawned in a worktree, connected to Jeera's MCP, drove a ticket
+  To Do → In Progress → Done, created and committed a file, and left a comment.
+
 ## [0.2.0] - 2026-06-24
 
 The ticket detail view: open any card to read and edit the full issue.
@@ -58,6 +93,7 @@ server, both backed by one local store.
   (MCP only), `jeera --no-mcp` (board only), `jeera version`; XDG-aware paths
   (`internal/paths`) and build identity (`internal/version`).
 
-[Unreleased]: https://github.com/03-CiprianoG/jeera/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/03-CiprianoG/jeera/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/03-CiprianoG/jeera/releases/tag/v0.3.0
 [0.2.0]: https://github.com/03-CiprianoG/jeera/releases/tag/v0.2.0
 [0.1.0]: https://github.com/03-CiprianoG/jeera/releases/tag/v0.1.0

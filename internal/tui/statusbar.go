@@ -17,6 +17,9 @@ func (m Model) renderHeader() string {
 		Padding(0, 1).Render("Jeera")
 
 	right := m.mcpPill()
+	if badge := m.runBadge(); badge != "" {
+		right = badge + "   " + right
+	}
 	proj := t.HelpDesc.Render("no project — press n to create one")
 	if m.active.ID != 0 {
 		// Truncate the project name so a long one never overflows the bar.

@@ -10,6 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/03-CiprianoG/jeera/internal/core"
+	"github.com/03-CiprianoG/jeera/internal/run"
 	"github.com/03-CiprianoG/jeera/internal/store"
 	"github.com/03-CiprianoG/jeera/internal/tui/theme"
 )
@@ -53,8 +54,9 @@ const (
 // activity timeline below. Edits persist to the store immediately and the view
 // reloads, so it stays consistent with concurrent agent changes.
 type detailModel struct {
-	store *store.Store
-	theme theme.Theme
+	store  *store.Store
+	runMgr *run.Manager
+	theme  theme.Theme
 
 	issueID int64
 	issue   core.Issue
@@ -65,6 +67,7 @@ type detailModel struct {
 	issueTags []core.Tag
 	links     []store.LinkedIssue
 	comments  []core.Comment
+	runs      []core.Run
 
 	vp        viewport.Model
 	desc      textarea.Model
@@ -78,8 +81,8 @@ type detailModel struct {
 	err           string
 }
 
-func newDetail(st *store.Store, th theme.Theme, issueID int64, w, h int) *detailModel {
-	d := &detailModel{store: st, theme: th, issueID: issueID, vp: viewport.New()}
+func newDetail(st *store.Store, mgr *run.Manager, th theme.Theme, issueID int64, w, h int) *detailModel {
+	d := &detailModel{store: st, runMgr: mgr, theme: th, issueID: issueID, vp: viewport.New()}
 	d.setSize(w, h)
 	d.reload()
 	return d
@@ -140,6 +143,7 @@ func (d *detailModel) reload() {
 	d.issueTags, _ = d.store.ListIssueTags(iss.ID)
 	d.links, _ = d.store.ListLinks(iss.ID)
 	d.comments, _ = d.store.ListComments(iss.ID)
+	d.runs, _ = d.store.ListRuns(iss.ID)
 	d.vp.SetHeight(d.descViewHeight())
 	d.renderDescription()
 }
@@ -187,6 +191,10 @@ func (d *detailModel) updateViewing(msg tea.Msg) (tea.Cmd, bool) {
 		return d.startEditDesc(), false
 	case "c":
 		return d.startInput(ikComment, ""), false
+	case "s":
+		d.startRun()
+	case "w":
+		d.toggleWorktree()
 	case "enter":
 		if d.field == dfPoints {
 			cur := ""
@@ -208,6 +216,34 @@ func (d *detailModel) updateViewing(msg tea.Msg) (tea.Cmd, bool) {
 		}
 	}
 	return nil, false
+}
+
+// startRun launches an agent on this ticket. The new run appears in the runs
+// list, and the agent moves the ticket through its statuses over MCP.
+func (d *detailModel) startRun() {
+	if d.runMgr == nil {
+		d.err = "run manager unavailable"
+		return
+	}
+	if _, err := d.runMgr.Start(d.issue); err != nil {
+		d.err = err.Error()
+		return
+	}
+	d.err = ""
+	d.reload()
+}
+
+// toggleWorktree flips whether this ticket's runs execute in an isolated git
+// worktree.
+func (d *detailModel) toggleWorktree() {
+	on := true
+	if d.issue.WorktreeOn != nil {
+		on = *d.issue.WorktreeOn
+	}
+	next := !on
+	d.issue.WorktreeOn = &next
+	d.saveIssue()
+	d.reload()
 }
 
 func (d *detailModel) startEditDesc() tea.Cmd {

@@ -58,13 +58,13 @@ Most tools bolt a chat box onto a GUI. Jeera inverts that. The agent isn't a fea
 | Feature | Status | Notes |
 |---|:---:|---|
 | **Embedded MCP server** | ✅ | Serves over local HTTP with `jeera` / `jeera --headless`; 15 typed tools for agents |
-| **Start a ticket** | 🔜 | Spawn `claude`/`codex` on the issue, streamed into a Runs view |
+| **Start a ticket** | ✅ | Press `s` to spawn `claude`/`codex` on the issue; it drives the ticket over MCP, streamed into the Runs view |
+| **Run versioning** | ✅ | Every Start is a new, recorded run version with its provider/model/effort, session and status |
+| **Per-ticket git worktrees** | ✅ | Each run is isolated on its own branch (default on, toggle off with `w`) |
+| **Model + effort picker** | ✅ | Choose the provider, model and reasoning effort per ticket from the detail view |
 | **Start with children** | 🔜 | Resolve sub-issues in dependency order, then the parent |
 | **Schedule Start** | 🔜 | Cron a ticket to run while your machine is on |
 | **Expand / Discuss** | 🔜 | Drop into an interactive agent session pre-loaded with the ticket |
-| **Run versioning** | 🔜 | Every run is a versioned, resumable, forkable session |
-| **Per-ticket git worktrees** | 🔜 | Isolate each run on its own branch (default on, toggle per ticket) |
-| **Model + effort picker** | 🔜 | Choose the provider, model and reasoning effort per ticket |
 | **Settings & defaults** | 🔜 | Global → per-project → per-ticket configuration cascade |
 
 ## How it runs
@@ -136,7 +136,7 @@ claude mcp add --transport http jeera http://127.0.0.1:7777
 
 ![The Jeera kanban board](docs/board.png)
 
-*The board: status columns, model-assignee cards, and the always-on **MCP wire** (top-right) showing the live endpoint an agent can connect to. The ticket detail editor, live Runs view and richer screens land in the next releases.*
+*The board: status columns, model-assignee cards, and the always-on **MCP wire** (top-right) showing the live endpoint an agent can connect to. Press Enter for the ticket detail editor, `s` to start an agent on a ticket, and `R` for the live Runs view.*
 
 ## Stack
 
@@ -159,8 +159,8 @@ Released under semantic versioning; each milestone is one or more pull requests.
 - [x] **Foundation** — domain model + local SQLite store
 - [x] **MCP server** — 15 typed tools over the shared store
 - [x] **v0.1.0** — design system + Kanban board (first runnable release)
-- [x] **v0.2.0** — ticket detail view: rich-text editing + all Jira fields + comments *(you are here)*
-- [ ] **v0.3.0** — execution engine (Start / worktrees / runs / versioning)
+- [x] **v0.2.0** — ticket detail view: rich-text editing + all Jira fields + comments
+- [x] **v0.3.0** — execution engine: Start / worktrees / runs / versioning *(you are here)*
 - [ ] **v0.4.0** — scheduling (Schedule Start)
 - [ ] **v0.5.0** — settings, config cascade, project management
 - [ ] **v1.0.0** — feature-complete, cross-platform release binaries

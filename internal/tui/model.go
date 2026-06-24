@@ -9,6 +9,7 @@ import (
 
 	"github.com/03-CiprianoG/jeera/internal/core"
 	"github.com/03-CiprianoG/jeera/internal/mcp"
+	"github.com/03-CiprianoG/jeera/internal/run"
 	"github.com/03-CiprianoG/jeera/internal/store"
 	"github.com/03-CiprianoG/jeera/internal/tui/theme"
 )
@@ -23,20 +24,24 @@ const (
 	modeProjects
 	modeConfirm
 	modeDetail
+	modeRuns
 )
 
 // Model is the root Bubble Tea model.
 type Model struct {
-	store *store.Store
-	mcp   *mcp.Server // nil when started with --no-mcp
-	theme theme.Theme
-	keys  keyMap
+	store  *store.Store
+	mcp    *mcp.Server // nil when started with --no-mcp
+	runMgr *run.Manager
+	theme  theme.Theme
+	keys   keyMap
 
 	width, height int
 
-	projects []core.Project
-	active   core.Project
-	board    boardData
+	projects   []core.Project
+	active     core.Project
+	board      boardData
+	activeRuns int
+	recentRuns []core.Run
 
 	colIdx, cardIdx int
 
@@ -51,13 +56,15 @@ type Model struct {
 	errText   string
 }
 
-// New builds the root model over a store and (optionally) a running MCP server.
-func New(st *store.Store, mcpSrv *mcp.Server) Model {
+// New builds the root model over a store, an optional running MCP server, and
+// the run manager that starts agents.
+func New(st *store.Store, mcpSrv *mcp.Server, mgr *run.Manager) Model {
 	m := Model{
-		store: st,
-		mcp:   mcpSrv,
-		theme: theme.New(),
-		keys:  newKeyMap(),
+		store:  st,
+		mcp:    mcpSrv,
+		runMgr: mgr,
+		theme:  theme.New(),
+		keys:   newKeyMap(),
 	}
 	m.reload()
 	return m
@@ -82,6 +89,9 @@ func (m *Model) reload() {
 		return
 	}
 	m.projects = projects
+	if active, err := m.store.ListActiveRuns(); err == nil {
+		m.activeRuns = len(active)
+	}
 
 	if m.active.ID != 0 {
 		found := false
@@ -163,6 +173,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.mode == modeDetail && m.detail != nil {
 			m.detail.reload()
 		}
+		if m.mode == modeRuns {
+			m.recentRuns, _ = m.store.ListRecentRuns(50)
+		}
 		return m, nil
 	case errMsg:
 		m.errText = msg.err.Error()
@@ -220,6 +233,9 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.updateConfirm(msg)
 	case modeDetail:
 		return m.routeDetail(msg)
+	case modeRuns:
+		m.mode = modeBoard // any key closes the runs view
+		return m, nil
 	default:
 		return m.updateBoard(msg)
 	}
@@ -262,6 +278,8 @@ func (m Model) View() tea.View {
 		mid = m.center(m.renderProjects(), midHeight)
 	case modeConfirm:
 		mid = m.center(m.renderConfirm(), midHeight)
+	case modeRuns:
+		mid = m.renderRuns(midHeight)
 	default:
 		mid = m.renderBoard(midHeight)
 	}

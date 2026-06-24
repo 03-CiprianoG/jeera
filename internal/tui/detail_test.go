@@ -19,7 +19,7 @@ func newDetailForTest(t *testing.T) (*detailModel, *store.Store, core.Issue) {
 	t.Cleanup(func() { _ = st.Close() })
 	p, _ := st.CreateProject(core.Project{Name: "Jeera", KeyPrefix: "JEE", RepoPath: "/tmp/jeera"})
 	iss, _ := st.CreateIssue(core.Issue{ProjectID: p.ID, Title: "Build the board", Type: core.TypeStory})
-	d := newDetail(st, theme.New(), iss.ID, 100, 30)
+	d := newDetail(st, nil /* no run manager in unit tests */, theme.New(), iss.ID, 100, 30)
 	return d, st, iss
 }
 

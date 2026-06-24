@@ -16,12 +16,17 @@ func (m Model) renderHeader() string {
 		Foreground(t.P.BgBase).Background(t.P.Focus).Bold(true).
 		Padding(0, 1).Render("Jeera")
 
+	right := m.mcpPill()
 	proj := t.HelpDesc.Render("no project — press n to create one")
 	if m.active.ID != 0 {
-		proj = t.Title.Render(m.active.Name) + " " + t.CardMeta.Render(m.active.KeyPrefix)
+		// Truncate the project name so a long one never overflows the bar.
+		budget := m.width - 4 - lipgloss.Width(brand) - lipgloss.Width(right) - lipgloss.Width(m.active.KeyPrefix) - 2
+		if budget < 6 {
+			budget = 6
+		}
+		proj = t.Title.Render(truncate(m.active.Name, budget)) + " " + t.CardMeta.Render(m.active.KeyPrefix)
 	}
 	left := brand + " " + proj
-	right := m.mcpPill()
 
 	inner := spread(left, right, m.width-2)
 	return lipgloss.NewStyle().Background(t.P.BgSurface).Width(m.width).Render(" " + inner + " ")
@@ -35,7 +40,7 @@ func (m Model) renderFooter() string {
 	right := ""
 	switch {
 	case m.errText != "":
-		right = t.Error.Render("! " + truncate(m.errText, m.width/2))
+		right = t.Error.Render("! " + truncate(m.errText, m.width/3))
 	case m.toastText != "":
 		right = t.Toast.Render(m.toastText)
 	}

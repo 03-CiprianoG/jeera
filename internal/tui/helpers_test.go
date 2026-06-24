@@ -39,9 +39,16 @@ func seedProject(t *testing.T, st *store.Store) core.Project {
 	return p
 }
 
-// keyPress builds a KeyPressMsg for a single character (the char-key aliases the
-// keymap accepts cover navigation and all single-letter actions).
+// keyPress builds a KeyPressMsg for a single character or a named special key.
 func keyPress(s string) tea.KeyPressMsg {
+	switch s {
+	case "enter":
+		return tea.KeyPressMsg{Code: tea.KeyEnter}
+	case "esc":
+		return tea.KeyPressMsg{Code: tea.KeyEscape}
+	case "tab":
+		return tea.KeyPressMsg{Code: tea.KeyTab}
+	}
 	return tea.KeyPressMsg{Code: []rune(s)[0], Text: s}
 }
 

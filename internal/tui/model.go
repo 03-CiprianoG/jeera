@@ -64,8 +64,16 @@ func New(st *store.Store, mcpSrv *mcp.Server) Model {
 // Init implements tea.Model.
 func (m Model) Init() tea.Cmd { return nil }
 
-// reload re-reads projects and the active project's board from the store.
+// reload re-reads projects and the active project's board from the store. It
+// preserves the current selection by issue ID, so the asynchronous store-event
+// reload (fired after every mutation, including the TUI's own) does not throw
+// the highlight off the card a move/create/rename just acted on.
 func (m *Model) reload() {
+	prevID := int64(0)
+	if iss, ok := m.selectedIssue(); ok {
+		prevID = iss.ID
+	}
+
 	projects, err := m.store.ListProjects()
 	if err != nil {
 		m.errText = err.Error()
@@ -100,7 +108,11 @@ func (m *Model) reload() {
 		return
 	}
 	m.board = bd
-	m.clampSelection()
+	if prevID != 0 {
+		m.selectIssueByID(prevID) // re-anchor; falls back to clamp if it's gone
+	} else {
+		m.clampSelection()
+	}
 }
 
 func (m *Model) clampSelection() {
@@ -188,6 +200,12 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 func (m Model) View() tea.View {
 	if m.width == 0 || m.height == 0 {
 		return tea.NewView("")
+	}
+	if m.width < 30 || m.height < 8 {
+		v := tea.NewView(m.theme.HelpDesc.Render("terminal too small"))
+		v.AltScreen = true
+		v.BackgroundColor = m.theme.P.BgBase
+		return v
 	}
 	header := m.renderHeader()
 	footer := m.renderFooter()

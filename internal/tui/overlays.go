@@ -79,6 +79,9 @@ func (m Model) renderProjects() string {
 			active = t.Chip.Render("  • active")
 		}
 		b.WriteString(cursor + nameStyle.Render(p.Name) + " " + t.CardMeta.Render(p.KeyPrefix) + active + "\n")
+		if p.RepoPath != "" {
+			b.WriteString("    " + t.HelpDesc.Render(truncate(p.RepoPath, 42)) + "\n")
+		}
 	}
 	b.WriteString("\n" + t.HelpDesc.Render("↑/↓ select · enter open · n new · esc close"))
 	return t.Modal.Width(48).Render(b.String())

@@ -43,7 +43,7 @@ func TestE2EAgentRunsTicketOverMCP(t *testing.T) {
 		Assignee:    core.Assignee{Provider: core.ProviderClaude, Model: "haiku", Effort: core.EffortLow},
 	})
 
-	mgr := NewManager(st, t.TempDir(), func() string { return srv.Status().URL })
+	mgr := NewManager(st, t.TempDir(), func() string { return srv.Status().URL }, nil)
 	r, err := mgr.Start(iss)
 	if err != nil {
 		t.Fatalf("Start: %v", err)

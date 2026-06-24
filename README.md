@@ -40,7 +40,7 @@ Most tools bolt a chat box onto a GUI. Jeera inverts that. The agent isn't a fea
 
 | Feature | Status | Notes |
 |---|:---:|---|
-| **Projects** bound to a git repo | ✅ | Each project points at a repository; switch between many |
+| **Projects** bound to a git repo | ✅ | Each project points at a repository (set on create); switch between many |
 | **Issues** — epics, stories, tasks, bugs, subtasks | ✅ | Per-project keys (`JEE-12`), Markdown descriptions |
 | **Statuses** & a configurable board | ✅ | Named columns grouped into To Do / In Progress / Done lanes |
 | **Priority**, **story points**, **tags** | ✅ | Five priority levels, point estimates, project-scoped labels |
@@ -64,8 +64,8 @@ Most tools bolt a chat box onto a GUI. Jeera inverts that. The agent isn't a fea
 | **Model + effort picker** | ✅ | Choose the provider, model and reasoning effort per ticket from the detail view |
 | **Schedule Start** | ✅ | Press `S` and enter a cron spec; Jeera runs the ticket on time, persisted across restarts and headless |
 | **Start with children** | 🔜 | Resolve sub-issues in dependency order, then the parent |
+| **Settings & defaults** | ✅ | Global → per-project → per-ticket cascade; `,` edits the global defaults |
 | **Expand / Discuss** | 🔜 | Drop into an interactive agent session pre-loaded with the ticket |
-| **Settings & defaults** | 🔜 | Global → per-project → per-ticket configuration cascade |
 
 ## How it runs
 
@@ -132,6 +132,23 @@ claude mcp add --transport http jeera http://127.0.0.1:7777
 }
 ```
 
+## Configuration
+
+Jeera resolves every run's settings through a three-layer cascade — **issue → project → global** — so you set sensible defaults once and override them only where it matters. Press `,` in the board to edit the global defaults live, or write them to `~/.config/jeera/config.toml`:
+
+```toml
+mcp_port = 7777          # preferred MCP port (JEERA_MCP_PORT still wins)
+
+[defaults]
+provider        = "claude"            # claude | codex
+model           = "opus"
+effort          = "medium"            # low | medium | high | xhigh | max
+worktree_on     = true                # isolate each run in a git worktree
+permission_mode = "bypassPermissions" # bypassPermissions | acceptEdits | plan | default
+```
+
+A project can override any default, and an individual ticket overrides the project — a model that doesn't fit the resolved provider falls back to that provider's default, so a run never starts misconfigured.
+
 ## Screenshots
 
 ![The Jeera kanban board](docs/board.png)
@@ -161,8 +178,8 @@ Released under semantic versioning; each milestone is one or more pull requests.
 - [x] **v0.1.0** — design system + Kanban board (first runnable release)
 - [x] **v0.2.0** — ticket detail view: rich-text editing + all Jira fields + comments
 - [x] **v0.3.0** — execution engine: Start / worktrees / runs / versioning
-- [x] **v0.4.0** — scheduling: cron a ticket to run itself, persisted and headless *(you are here)*
-- [ ] **v0.5.0** — settings, config cascade, project management
+- [x] **v0.4.0** — scheduling: cron a ticket to run itself, persisted and headless
+- [x] **v0.5.0** — settings: global → project → ticket config cascade, project repo paths *(you are here)*
 - [ ] **v1.0.0** — feature-complete, cross-platform release binaries
 
 ## Contributing

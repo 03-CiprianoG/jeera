@@ -18,6 +18,7 @@ type keyMap struct {
 	Project   key.Binding
 	MCP       key.Binding
 	Runs      key.Binding
+	Settings  key.Binding
 	Refresh   key.Binding
 	Help      key.Binding
 	Quit      key.Binding
@@ -38,6 +39,7 @@ func newKeyMap() keyMap {
 		Project:   key.NewBinding(key.WithKeys("p"), key.WithHelp("p", "projects")),
 		MCP:       key.NewBinding(key.WithKeys("m"), key.WithHelp("m", "mcp")),
 		Runs:      key.NewBinding(key.WithKeys("R"), key.WithHelp("R", "runs")),
+		Settings:  key.NewBinding(key.WithKeys(","), key.WithHelp(",", "settings")),
 		Refresh:   key.NewBinding(key.WithKeys("r"), key.WithHelp("r", "refresh")),
 		Help:      key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
 		Quit:      key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),
@@ -55,7 +57,7 @@ func (m Model) navHints() []key.Binding {
 	return []key.Binding{
 		m.keys.Left, m.keys.Right, m.keys.Up, m.keys.Down,
 		m.keys.New, m.keys.Edit, m.keys.Delete, m.keys.Enter,
-		m.keys.MoveLeft, m.keys.MoveRight, m.keys.Project, m.keys.MCP, m.keys.Runs, m.keys.Refresh,
+		m.keys.MoveLeft, m.keys.MoveRight, m.keys.Project, m.keys.MCP, m.keys.Runs, m.keys.Settings, m.keys.Refresh,
 	}
 }
 
@@ -65,6 +67,6 @@ func (k keyMap) FullHelp() [][]key.Binding {
 		{k.Up, k.Down, k.Left, k.Right},
 		{k.New, k.Edit, k.Delete, k.Enter},
 		{k.MoveLeft, k.MoveRight, k.Project},
-		{k.MCP, k.Runs, k.Refresh, k.Help, k.Quit},
+		{k.MCP, k.Runs, k.Settings, k.Refresh, k.Help, k.Quit},
 	}
 }

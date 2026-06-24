@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/03-CiprianoG/jeera/internal/config"
 	"github.com/03-CiprianoG/jeera/internal/mcp"
 	"github.com/03-CiprianoG/jeera/internal/paths"
 	runpkg "github.com/03-CiprianoG/jeera/internal/run"
@@ -71,15 +72,20 @@ func run(ctx context.Context, headless, noMCP bool, out io.Writer) error {
 	}
 	defer st.Close()
 
+	// One live config store backs the whole process: the MCP port, the run
+	// manager's default cascade, and (in the TUI) the settings editor.
+	cfgStore, _ := config.NewStore(config.Path())
+	port := mcpPort(cfgStore.Get().MCPPort)
+
 	if headless {
-		return runHeadless(ctx, st, out)
+		return runHeadless(ctx, st, cfgStore, port, out)
 	}
 
 	// Board mode: start the MCP server alongside the TUI unless asked not to.
 	var srv *mcp.Server
 	if !noMCP {
 		srv = mcp.NewServer(mcp.NewService(st))
-		if err := srv.Start("127.0.0.1", mcpPort()); err != nil {
+		if err := srv.Start("127.0.0.1", port); err != nil {
 			return fmt.Errorf("start MCP server: %w", err)
 		}
 		defer func() {
@@ -88,14 +94,14 @@ func run(ctx context.Context, headless, noMCP bool, out io.Writer) error {
 			_ = srv.Shutdown(shutCtx)
 		}()
 	}
-	return tui.Run(ctx, st, srv)
+	return tui.Run(ctx, st, srv, cfgStore)
 }
 
 // runHeadless serves only the MCP server, printing connection details and
 // blocking until the context is cancelled.
-func runHeadless(ctx context.Context, st *store.Store, out io.Writer) error {
+func runHeadless(ctx context.Context, st *store.Store, cfgStore *config.Store, port int, out io.Writer) error {
 	srv := mcp.NewServer(mcp.NewService(st))
-	if err := srv.Start("127.0.0.1", mcpPort()); err != nil {
+	if err := srv.Start("127.0.0.1", port); err != nil {
 		return fmt.Errorf("start MCP server: %w", err)
 	}
 	status := srv.Status()
@@ -103,7 +109,8 @@ func runHeadless(ctx context.Context, st *store.Store, out io.Writer) error {
 
 	// The execution engine and scheduler run headless too, so "Schedule Start"
 	// entries fire while the server is up — a quiet machine working its backlog.
-	mgr := runpkg.NewManager(st, paths.DataDir(), func() string { return srv.Status().URL })
+	// Runs resolve their settings through the same global cascade as the TUI.
+	mgr := runpkg.NewManager(st, paths.DataDir(), func() string { return srv.Status().URL }, cfgStore.Defaults)
 	defer mgr.Shutdown()
 	scheduled := 0
 	if sched, err := schedule.New(st, mgr); err == nil {
@@ -134,14 +141,17 @@ func runHeadless(ctx context.Context, st *store.Store, out io.Writer) error {
 	return srv.Shutdown(shutCtx)
 }
 
-// mcpPort resolves the preferred MCP port: JEERA_MCP_PORT if set and valid,
-// otherwise the package default. The server falls back to a nearby free port if
-// this one is taken.
-func mcpPort() int {
+// mcpPort resolves the preferred MCP port: JEERA_MCP_PORT if set and valid, then
+// the configured mcp_port if non-zero, otherwise the package default. The server
+// falls back to a nearby free port if the chosen one is taken.
+func mcpPort(configured int) int {
 	if v := os.Getenv("JEERA_MCP_PORT"); v != "" {
 		if p, err := strconv.Atoi(v); err == nil && p >= 0 && p <= 65535 {
 			return p
 		}
+	}
+	if configured > 0 && configured <= 65535 {
+		return configured
 	}
 	return mcp.DefaultPort
 }

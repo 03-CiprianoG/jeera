@@ -7,6 +7,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/03-CiprianoG/jeera/internal/config"
 	"github.com/03-CiprianoG/jeera/internal/core"
 	"github.com/03-CiprianoG/jeera/internal/mcp"
 	"github.com/03-CiprianoG/jeera/internal/run"
@@ -26,6 +27,7 @@ const (
 	modeConfirm
 	modeDetail
 	modeRuns
+	modeSettings
 )
 
 // Model is the root Bubble Tea model.
@@ -34,8 +36,11 @@ type Model struct {
 	mcp    *mcp.Server // nil when started with --no-mcp
 	runMgr *run.Manager
 	sched  *schedule.Scheduler // nil when scheduling is unavailable
+	cfg    *config.Store
 	theme  theme.Theme
 	keys   keyMap
+
+	settings *settingsModel // non-nil while the settings view is open
 
 	width, height int
 
@@ -59,13 +64,19 @@ type Model struct {
 }
 
 // New builds the root model over a store, an optional running MCP server, the
-// run manager that starts agents, and the scheduler that fires timed runs.
-func New(st *store.Store, mcpSrv *mcp.Server, mgr *run.Manager, sched *schedule.Scheduler) Model {
+// run manager that starts agents, the scheduler that fires timed runs, and the
+// live settings store. A nil cfg falls back to an on-disk store at the default
+// path, so callers (and tests) need not always supply one.
+func New(st *store.Store, mcpSrv *mcp.Server, mgr *run.Manager, sched *schedule.Scheduler, cfg *config.Store) Model {
+	if cfg == nil {
+		cfg, _ = config.NewStore(config.Path())
+	}
 	m := Model{
 		store:  st,
 		mcp:    mcpSrv,
 		runMgr: mgr,
 		sched:  sched,
+		cfg:    cfg,
 		theme:  theme.New(),
 		keys:   newKeyMap(),
 	}
@@ -239,6 +250,12 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case modeRuns:
 		m.mode = modeBoard // any key closes the runs view
 		return m, nil
+	case modeSettings:
+		if m.settings != nil && m.settings.update(msg) {
+			m.settings = nil
+			m.mode = modeBoard
+		}
+		return m, nil
 	default:
 		return m.updateBoard(msg)
 	}
@@ -283,6 +300,8 @@ func (m Model) View() tea.View {
 		mid = m.center(m.renderConfirm(), midHeight)
 	case modeRuns:
 		mid = m.renderRuns(midHeight)
+	case modeSettings:
+		mid = m.center(m.settings.View(), midHeight)
 	default:
 		mid = m.renderBoard(midHeight)
 	}

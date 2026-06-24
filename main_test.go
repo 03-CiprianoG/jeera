@@ -23,13 +23,26 @@ func TestRunHeadlessServesAndShutsDown(t *testing.T) {
 	}
 }
 
-func TestMCPPortFromEnv(t *testing.T) {
+func TestMCPPortResolution(t *testing.T) {
 	t.Setenv("JEERA_MCP_PORT", "9123")
-	if got := mcpPort(); got != 9123 {
-		t.Errorf("mcpPort() = %d, want 9123", got)
+	if got := mcpPort(0); got != 9123 {
+		t.Errorf("env should win: mcpPort(0) = %d, want 9123", got)
 	}
+	// The env var also wins over a configured port.
+	if got := mcpPort(8000); got != 9123 {
+		t.Errorf("env should win over config: mcpPort(8000) = %d, want 9123", got)
+	}
+
+	t.Setenv("JEERA_MCP_PORT", "")
+	if got := mcpPort(8000); got != 8000 {
+		t.Errorf("configured port should be used when no env: mcpPort(8000) = %d, want 8000", got)
+	}
+	if got := mcpPort(0); got == 0 {
+		t.Errorf("with no env and no config, mcpPort(0) = %d, want the default", got)
+	}
+
 	t.Setenv("JEERA_MCP_PORT", "not-a-port")
-	if got := mcpPort(); got == 0 {
-		t.Errorf("mcpPort() with bad value = %d, want the default", got)
+	if got := mcpPort(0); got == 0 {
+		t.Errorf("a bad env value should fall back, got %d", got)
 	}
 }

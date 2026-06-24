@@ -6,6 +6,30 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-06-24
+
+Settings & the configuration cascade: set your defaults once, override them where
+it matters, and point projects at any repo.
+
+### Added
+- **Settings cascade** (`internal/config`): run settings now resolve through three
+  layers — the issue's own values, then the project's defaults, then a global
+  config file — so "Start" behaves predictably whether a ticket was filled in
+  fully, partially, or not at all. A model that doesn't belong to the resolved
+  provider falls back to that provider's catalog default, so a run never launches
+  with a mismatched model.
+- **Global config file** (`~/.config/jeera/config.toml`): a TOML file holding the
+  fallback provider/model/effort, worktree default, permission mode and MCP port.
+  Missing or partial files fall back to built-in defaults; writes are atomic.
+- **Settings view** (`internal/tui/settings.go`): press `,` to edit the global
+  defaults in place (`j/k` to move, `h/l` to change). Every change is saved
+  immediately and picked up live by the run manager and scheduler.
+- **Configurable MCP port**: `mcp_port` in the config file (and the existing
+  `JEERA_MCP_PORT`, which still wins) sets the preferred port.
+- **Project repo path on create**: the New Project form now takes the repository
+  path (pre-filled with the current directory), and the projects switcher shows
+  each project's repo — making "point Jeera at a repo" explicit.
+
 ## [0.4.0] - 2026-06-24
 
 Scheduling: a ticket can now start itself on a cron. Set it once and walk away —
@@ -115,7 +139,8 @@ server, both backed by one local store.
   (MCP only), `jeera --no-mcp` (board only), `jeera version`; XDG-aware paths
   (`internal/paths`) and build identity (`internal/version`).
 
-[Unreleased]: https://github.com/03-CiprianoG/jeera/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/03-CiprianoG/jeera/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/03-CiprianoG/jeera/releases/tag/v0.5.0
 [0.4.0]: https://github.com/03-CiprianoG/jeera/releases/tag/v0.4.0
 [0.3.0]: https://github.com/03-CiprianoG/jeera/releases/tag/v0.3.0
 [0.2.0]: https://github.com/03-CiprianoG/jeera/releases/tag/v0.2.0

@@ -219,6 +219,76 @@ func TestPrepareNoMCP(t *testing.T) {
 	}
 }
 
+func TestResumeCommandInWorktree(t *testing.T) {
+	m, st, iss := setup(t)
+	wt := t.TempDir() // stand in for a still-present worktree
+	r, _ := st.CreateRun(core.Run{
+		IssueID: iss.ID, Version: 2, Provider: core.ProviderClaude,
+		SessionID: "sess-abc", WorktreePath: wt, Status: core.RunSucceeded,
+	})
+	cmd, err := m.ResumeCommand(r)
+	if err != nil {
+		t.Fatalf("ResumeCommand: %v", err)
+	}
+	if got := strings.Join(cmd.Args, " "); got != "claude --resume sess-abc" {
+		t.Errorf("args = %q, want %q", got, "claude --resume sess-abc")
+	}
+	if cmd.Dir != wt {
+		t.Errorf("cmd.Dir = %q, want the run's worktree %q", cmd.Dir, wt)
+	}
+}
+
+func TestResumeCommandFallsBackToRepo(t *testing.T) {
+	m, st, iss := setup(t)
+	repo, _ := st.GetProject(iss.ProjectID)
+	cases := map[string]string{
+		"no worktree":     "",
+		"pruned worktree": filepath.Join(t.TempDir(), "gone-v3"), // path that does not exist
+	}
+	for name, wt := range cases {
+		t.Run(name, func(t *testing.T) {
+			r, _ := st.CreateRun(core.Run{
+				IssueID: iss.ID, Provider: core.ProviderClaude,
+				SessionID: "sess-1", WorktreePath: wt, Status: core.RunSucceeded,
+			})
+			cmd, err := m.ResumeCommand(r)
+			if err != nil {
+				t.Fatalf("ResumeCommand: %v", err)
+			}
+			if cmd.Dir != repo.RepoPath {
+				t.Errorf("cmd.Dir = %q, want the project repo %q", cmd.Dir, repo.RepoPath)
+			}
+		})
+	}
+}
+
+func TestResumeCommandCodex(t *testing.T) {
+	m, st, iss := setup(t)
+	r, _ := st.CreateRun(core.Run{
+		IssueID: iss.ID, Provider: core.ProviderCodex,
+		SessionID: "thread-9", Status: core.RunSucceeded,
+	})
+	cmd, err := m.ResumeCommand(r)
+	if err != nil {
+		t.Fatalf("ResumeCommand: %v", err)
+	}
+	if got := strings.Join(cmd.Args, " "); got != "codex resume thread-9" {
+		t.Errorf("args = %q, want %q", got, "codex resume thread-9")
+	}
+}
+
+func TestResumeCommandErrors(t *testing.T) {
+	m, st, iss := setup(t)
+	noSession, _ := st.CreateRun(core.Run{IssueID: iss.ID, Provider: core.ProviderClaude, Status: core.RunFailed})
+	if _, err := m.ResumeCommand(noSession); err == nil || !strings.Contains(err.Error(), "no session") {
+		t.Errorf("a run with no session id should not be resumable, got %v", err)
+	}
+	badProv := core.Run{IssueID: iss.ID, Provider: core.Provider("gemini"), SessionID: "x"}
+	if _, err := m.ResumeCommand(badProv); err == nil || !strings.Contains(err.Error(), "no driver for provider") {
+		t.Errorf("an unknown provider should error, got %v", err)
+	}
+}
+
 // --- launch lifecycle, exercised with a fake provider CLI ----------------------
 
 // fakePlan builds a plan whose command re-execs this test binary as a canned

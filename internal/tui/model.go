@@ -22,6 +22,7 @@ const (
 	modeMCP
 	modeProjects
 	modeConfirm
+	modeDetail
 )
 
 // Model is the root Bubble Tea model.
@@ -41,6 +42,7 @@ type Model struct {
 
 	mode      mode
 	form      *formModel
+	detail    *detailModel
 	confirm   string
 	onConfirm func() tea.Cmd
 	projSel   int
@@ -152,9 +154,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+		if m.detail != nil {
+			m.detail.setSize(m.width, m.height)
+		}
 		return m, nil
 	case storeEventMsg:
 		m.reload()
+		if m.mode == modeDetail && m.detail != nil {
+			m.detail.reload()
+		}
 		return m, nil
 	case errMsg:
 		m.errText = msg.err.Error()
@@ -170,11 +178,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		return m.handleKey(msg)
 	}
-	// Route other messages (e.g. cursor blink) to the active form.
+	// Route other messages (e.g. cursor blink) to the active form or detail view.
 	if m.mode == modeForm && m.form != nil {
 		return m, m.form.update(msg)
 	}
+	if m.mode == modeDetail && m.detail != nil {
+		return m.routeDetail(msg)
+	}
 	return m, nil
+}
+
+// routeDetail forwards a message to the detail view and returns to the board
+// when it signals done.
+func (m Model) routeDetail(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.detail == nil {
+		m.mode = modeBoard
+		return m, nil
+	}
+	cmd, back := m.detail.Update(msg)
+	if back {
+		m.mode = modeBoard
+		m.detail = nil
+		m.reload()
+	}
+	return m, cmd
 }
 
 func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
@@ -191,6 +218,8 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.updateProjects(msg)
 	case modeConfirm:
 		return m.updateConfirm(msg)
+	case modeDetail:
+		return m.routeDetail(msg)
 	default:
 		return m.updateBoard(msg)
 	}
@@ -203,6 +232,13 @@ func (m Model) View() tea.View {
 	}
 	if m.width < 30 || m.height < 8 {
 		v := tea.NewView(m.theme.HelpDesc.Render("terminal too small"))
+		v.AltScreen = true
+		v.BackgroundColor = m.theme.P.BgBase
+		return v
+	}
+	// The detail view takes over the whole screen.
+	if m.mode == modeDetail && m.detail != nil {
+		v := tea.NewView(m.detail.View())
 		v.AltScreen = true
 		v.BackgroundColor = m.theme.P.BgBase
 		return v

@@ -6,30 +6,20 @@ import (
 	"testing"
 )
 
-// TestRunServesAndShutsDown exercises the root command's happy path against an
+// TestRunHeadlessServesAndShutsDown exercises the --headless path against an
 // isolated data dir and an ephemeral MCP port. A pre-cancelled context makes the
-// serve loop return immediately, so each mode opens the store, (optionally)
-// starts and gracefully stops the MCP server without error.
-func TestRunServesAndShutsDown(t *testing.T) {
+// serve loop return immediately, so it starts and gracefully stops the MCP
+// server without error. (Board mode launches a Bubble Tea program that needs a
+// TTY, so it is covered by the tui package's tests rather than here.)
+func TestRunHeadlessServesAndShutsDown(t *testing.T) {
 	t.Setenv("JEERA_DATA_DIR", t.TempDir())
 	t.Setenv("JEERA_MCP_PORT", "0") // bind any free port
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // serve loop exits at once
 
-	for _, mode := range []struct {
-		name            string
-		headless, noMCP bool
-	}{
-		{"tui+mcp", false, false},
-		{"headless", true, false},
-		{"no-mcp", false, true},
-	} {
-		t.Run(mode.name, func(t *testing.T) {
-			if err := run(ctx, mode.headless, mode.noMCP, io.Discard); err != nil {
-				t.Fatalf("run: %v", err)
-			}
-		})
+	if err := run(ctx, true /* headless */, false, io.Discard); err != nil {
+		t.Fatalf("run(headless): %v", err)
 	}
 }
 

@@ -107,7 +107,7 @@ func (m Model) updateProjects(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if m.projSel >= 0 && m.projSel < len(m.projects) {
 			m.active = m.projects[m.projSel]
 			m.colIdx, m.cardIdx = 0, 0
-			m.sprintSel = 0 // a new project has its own sprints; don't carry the old cursor
+			m.backlogSel, m.sprintSel = 0, 0 // a new project has its own issues; don't carry old cursors
 			m.mode = modeNormal
 			m.reload()
 			return m, toast("switched to " + m.active.KeyPrefix)

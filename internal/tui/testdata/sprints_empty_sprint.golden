@@ -1,12 +1,12 @@
   Jeera  Jeera JEE                                                                        ● mcp off 
-   Board    Sprints    Runs                                                                         
-──────────━━━━━━━━━━━────────                                                                       
-● Sprint 1  active                                                                        2 issues  
-▸ ● ■ JEE-1      First issue                                                                        
+   Board    Backlog    Sprints    Runs                                                              
+─────────────────────━━━━━━━━━━━────────                                                            
+▸ ● Sprint 1  active                                                                      2 issues  
+  ● ■ JEE-1      First issue                                                                        
   ● ■ JEE-2      Second issue                                                                       
                                                                                                     
-● Sprint 2  future                                                                        0 issues  
-   — no issues —                                                                                    
+  ● Sprint 2  future                                                                      0 issues  
+     — no issues —                                                                                  
                                                                                                     
                                                                                                     
                                                                                                     
@@ -27,4 +27,4 @@
                                                                                                     
                                                                                                     
                                                                                                     
- tab next view  ↑/k up  ↓/j down  enter open  p projects  m mcp  , settings  ? help  q quit
+ tab next view  ↑/k up  ↓/j down  a add issue  s finish  x delete  n new sprint  ? help  q quit

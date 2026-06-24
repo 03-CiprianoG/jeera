@@ -18,6 +18,7 @@ const (
 	formCreateIssue formKind = iota
 	formCreateProject
 	formRename
+	formCreateSprint
 )
 
 // formModel is a small modal form. It is held by pointer on the root model so
@@ -45,6 +46,18 @@ func newCreateIssueForm() *formModel {
 		heading: "New issue",
 		labels:  []string{"Title"},
 		fields:  []textinput.Model{newField("What needs doing?", 46, 200)},
+	}
+}
+
+func newCreateSprintForm() *formModel {
+	return &formModel{
+		kind:    formCreateSprint,
+		heading: "New sprint",
+		labels:  []string{"Name", "Goal"},
+		fields: []textinput.Model{
+			newField("Sprint name", 46, 80),
+			newField("Goal (optional)", 46, 200),
+		},
 	}
 }
 
@@ -174,6 +187,16 @@ func (m Model) submitForm() (tea.Model, tea.Cmd) {
 		m.closeForm()
 		m.selectIssueByID(iss.ID)
 		return m, toast("created " + iss.Key)
+
+	case formCreateSprint:
+		if vals[0] == "" {
+			return m, reportErr(fmt.Errorf("sprint name is required"))
+		}
+		if _, err := m.store.CreateSprint(core.Sprint{ProjectID: m.active.ID, Name: vals[0], Goal: vals[1]}); err != nil {
+			return m, reportErr(err)
+		}
+		m.closeForm()
+		return m, toast("created sprint " + vals[0])
 
 	case formRename:
 		iss, err := m.store.GetIssue(m.form.issueID)

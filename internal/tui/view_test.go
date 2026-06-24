@@ -9,21 +9,12 @@ func TestViewSwitchingCycles(t *testing.T) {
 		t.Fatalf("should start on the board, got view %d", m.view)
 	}
 
-	tab := func() {
+	for _, want := range []view{viewBacklog, viewSprints, viewRuns, viewBoard} {
 		next, _ := m.Update(keyPress("tab"))
 		m = next.(Model)
-	}
-	tab()
-	if m.view != viewSprints {
-		t.Errorf("tab → sprints, got %d", m.view)
-	}
-	tab()
-	if m.view != viewRuns {
-		t.Errorf("tab → runs, got %d", m.view)
-	}
-	tab()
-	if m.view != viewBoard {
-		t.Errorf("tab wraps → board, got %d", m.view)
+		if m.view != want {
+			t.Errorf("tab → view %d, want %d", m.view, want)
+		}
 	}
 
 	next, _ := m.Update(keyPress("shift+tab"))
@@ -57,8 +48,8 @@ func TestShiftTabFromSprints(t *testing.T) {
 	m, _ := newTestModel(t)
 	seedSprints(t, &m) // leaves the model on the Sprints view
 	next, _ := m.Update(keyPress("shift+tab"))
-	if got := next.(Model).view; got != viewBoard {
-		t.Errorf("shift+tab from Sprints should step back to the Board, got view %d", got)
+	if got := next.(Model).view; got != viewBacklog {
+		t.Errorf("shift+tab from Sprints should step back to Backlog, got view %d", got)
 	}
 }
 
@@ -74,7 +65,7 @@ func TestViewSwitchPreservesBoardSelection(t *testing.T) {
 		t.Fatal("expected a selected issue after moving down")
 	}
 
-	for i := 0; i < 3; i++ { // board → sprints → runs → board
+	for i := 0; i < int(viewCount); i++ { // a full lap returns to the board
 		next, _ = m.Update(keyPress("tab"))
 		m = next.(Model)
 	}

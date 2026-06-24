@@ -15,6 +15,9 @@ type keyMap struct {
 	Edit      key.Binding
 	Delete    key.Binding
 	Enter     key.Binding
+	Assign    key.Binding
+	Cycle     key.Binding
+	Unsprint  key.Binding
 	NextView  key.Binding
 	PrevView  key.Binding
 	Project   key.Binding
@@ -39,6 +42,9 @@ func newKeyMap() keyMap {
 		Edit:      key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "rename")),
 		Delete:    key.NewBinding(key.WithKeys("x"), key.WithHelp("x", "delete")),
 		Enter:     key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open")),
+		Assign:    key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "assign")),
+		Cycle:     key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "start/finish")),
+		Unsprint:  key.NewBinding(key.WithKeys("backspace"), key.WithHelp("⌫", "to backlog")),
 		NextView:  key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "next view")),
 		PrevView:  key.NewBinding(key.WithKeys("shift+tab"), key.WithHelp("⇧tab", "prev view")),
 		Project:   key.NewBinding(key.WithKeys("p"), key.WithHelp("p", "projects")),
@@ -64,11 +70,34 @@ func (k keyMap) ShortHelp() []key.Binding {
 func (m Model) navHints() []key.Binding {
 	overlays := []key.Binding{m.keys.Project, m.keys.MCP, m.keys.Settings, m.keys.Refresh}
 	switch m.view {
+	case viewBacklog:
+		hints := []key.Binding{m.keys.NextView}
+		if len(m.backlog.issues) > 0 {
+			hints = append(hints, m.keys.Up, m.keys.Down, m.keys.Enter)
+			if m.backlog.sprintCount > 0 { // nothing to assign into until a sprint exists
+				hints = append(hints, m.keys.Assign)
+			}
+		}
+		hints = append(hints, m.keys.New)
+		return append(hints, overlays...)
 	case viewSprints:
 		hints := []key.Binding{m.keys.NextView}
-		if len(m.sprints.flatIssues()) > 0 { // only offer actions there's something to act on
-			hints = append(hints, m.keys.Up, m.keys.Down, m.keys.Enter)
+		if len(m.sprints.items()) > 0 {
+			hints = append(hints, m.keys.Up, m.keys.Down)
+			// The action keys depend on whether a sprint header or an issue is selected,
+			// so the footer always reads true to the current row.
+			if it, ok := m.selectedSprintItem(); ok && it.kind == itemHeader {
+				hints = append(hints,
+					key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "add issue")),
+					key.NewBinding(key.WithKeys("s"), key.WithHelp("s", sprintCycleVerb(it.sprint.State))),
+					m.keys.Delete)
+			} else if ok {
+				hints = append(hints, m.keys.Enter,
+					key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "move")),
+					m.keys.Unsprint)
+			}
 		}
+		hints = append(hints, key.NewBinding(key.WithKeys("n"), key.WithHelp("n", "new sprint")))
 		return append(hints, overlays...)
 	case viewRuns:
 		hints := []key.Binding{m.keys.NextView}

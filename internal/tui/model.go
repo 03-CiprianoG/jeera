@@ -28,6 +28,7 @@ const (
 	modeProjects
 	modeConfirm
 	modeDetail
+	modePicker
 	modeSettings
 )
 
@@ -39,6 +40,7 @@ type view int
 
 const (
 	viewBoard view = iota
+	viewBacklog
 	viewSprints
 	viewRuns
 	viewCount
@@ -61,18 +63,21 @@ type Model struct {
 	projects   []core.Project
 	active     core.Project
 	board      boardData
+	backlog    backlogData
 	sprints    sprintsData
 	activeRuns int
 	recentRuns []core.Run
 	runsCursor int // selected row in the Runs view
 
 	colIdx, cardIdx int
-	sprintSel       int // selected issue in the Sprints view (flat index)
+	backlogSel      int // selected issue in the Backlog view
+	sprintSel       int // selected row (sprint header or issue) in the Sprints view
 
 	view      view
 	mode      mode
 	form      *formModel
 	detail    *detailModel
+	picker    *pickerModel // non-nil while a chooser overlay is open
 	confirm   string
 	onConfirm func() tea.Cmd
 	projSel   int
@@ -166,14 +171,37 @@ func (m *Model) reload() {
 // a no-op on the board (whose data reload() already handles).
 func (m *Model) refreshView() {
 	switch m.view {
-	case viewSprints:
-		// Re-anchor the cursor by issue ID, exactly as the board does (reload →
-		// selectIssueByID): an agent re-ranking or moving an issue over MCP reorders
-		// the flat list, which would otherwise slide the highlight onto a different
-		// ticket than the one the user selected.
+	case viewBacklog:
 		prevID := int64(0)
-		if iss, ok := m.selectedSprintIssue(); ok {
+		if iss, ok := m.selectedBacklogIssue(); ok {
 			prevID = iss.ID
+		}
+		bl, err := loadBacklog(m.store, m.active.ID)
+		if err != nil {
+			m.errText = err.Error()
+			return
+		}
+		m.backlog = bl
+		if prevID != 0 {
+			for i, iss := range m.backlog.issues {
+				if iss.ID == prevID {
+					m.backlogSel = i
+					break
+				}
+			}
+		}
+		m.clampBacklogSel()
+	case viewSprints:
+		// Re-anchor the cursor by what it's on — a sprint header or an issue — so a
+		// live agent change that reorders the list doesn't slide the highlight onto a
+		// different row than the one the user selected.
+		var wantSprint, wantIssue int64
+		if it, ok := m.selectedSprintItem(); ok {
+			if it.kind == itemHeader {
+				wantSprint = it.sprint.ID
+			} else {
+				wantIssue = it.issue.ID
+			}
 		}
 		sp, err := loadSprints(m.store, m.active.ID)
 		if err != nil {
@@ -181,12 +209,11 @@ func (m *Model) refreshView() {
 			return
 		}
 		m.sprints = sp
-		if prevID != 0 {
-			for i, iss := range m.sprints.flatIssues() {
-				if iss.ID == prevID {
-					m.sprintSel = i
-					break
-				}
+		for i, it := range m.sprints.items() {
+			if (it.kind == itemHeader && wantSprint != 0 && it.sprint.ID == wantSprint) ||
+				(it.kind == itemIssue && wantIssue != 0 && it.issue.ID == wantIssue) {
+				m.sprintSel = i
+				break
 			}
 		}
 		m.clampSprintSel()
@@ -220,6 +247,8 @@ func (m *Model) switchView(delta int) {
 // exactly height rows tall.
 func (m Model) renderActiveView(height int) string {
 	switch m.view {
+	case viewBacklog:
+		return m.renderBacklog(height)
 	case viewSprints:
 		return m.renderSprints(height)
 	case viewRuns:
@@ -343,6 +372,8 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.updateConfirm(msg)
 	case modeDetail:
 		return m.routeDetail(msg)
+	case modePicker:
+		return m.updatePicker(msg)
 	case modeSettings:
 		if m.settings != nil && m.settings.update(msg) {
 			m.settings = nil
@@ -356,6 +387,8 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return next, cmd
 	}
 	switch m.view {
+	case viewBacklog:
+		return m.updateBacklog(msg)
 	case viewSprints:
 		return m.updateSprints(msg)
 	case viewRuns:
@@ -403,6 +436,8 @@ func (m Model) View() tea.View {
 		mid = m.center(m.renderProjects(), midHeight)
 	case modeConfirm:
 		mid = m.center(m.renderConfirm(), midHeight)
+	case modePicker:
+		mid = m.center(m.picker.View(m.theme), midHeight)
 	case modeSettings:
 		mid = m.center(m.settings.View(), midHeight)
 	default: // modeNormal

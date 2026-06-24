@@ -72,7 +72,11 @@ func TestGoldenSprintsEmpty(t *testing.T) {
 
 func TestSprintsCursorNavigation(t *testing.T) {
 	m, _ := newTestModel(t)
-	seedSprints(t, &m) // three issues across two sprints
+	seedSprints(t, &m) // rows: [hdr S1, JEE-1, JEE-2, hdr S2, JEE-3]
+	n := len(m.sprints.items())
+	if n != 5 {
+		t.Fatalf("expected 5 rows (2 headers + 3 issues), got %d", n)
+	}
 	m.sprintSel = 0
 
 	step := func(key string) {
@@ -80,28 +84,26 @@ func TestSprintsCursorNavigation(t *testing.T) {
 		m = next.(Model)
 	}
 
-	step("j")
-	if m.sprintSel != 1 {
-		t.Fatalf("after down, cursor = %d, want 1", m.sprintSel)
+	for i := 1; i < n; i++ { // the cursor walks headers and issues alike
+		step("j")
+		if m.sprintSel != i {
+			t.Fatalf("down to row %d: cursor = %d", i, m.sprintSel)
+		}
 	}
-	step("j")
-	if m.sprintSel != 2 {
-		t.Fatalf("after down, cursor = %d, want 2", m.sprintSel)
-	}
-	step("j") // clamp at the last issue across all sprints
-	if m.sprintSel != 2 {
+	step("j") // clamp at the last row
+	if m.sprintSel != n-1 {
 		t.Fatalf("down past the end should clamp, cursor = %d", m.sprintSel)
 	}
 	step("k")
-	if m.sprintSel != 1 {
-		t.Fatalf("after up, cursor = %d, want 1", m.sprintSel)
+	if m.sprintSel != n-2 {
+		t.Fatalf("after up, cursor = %d, want %d", m.sprintSel, n-2)
 	}
 }
 
 func TestSprintsEnterOpensDetail(t *testing.T) {
 	m, _ := newTestModel(t)
 	seedSprints(t, &m)
-	m.sprintSel = 0
+	m.sprintSel = 1 // row 0 is the sprint header; row 1 is its first issue
 
 	want, ok := m.selectedSprintIssue()
 	if !ok {

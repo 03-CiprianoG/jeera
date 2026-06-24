@@ -1,24 +1,12 @@
   Jeera  Jeera JEE                                                                        ● mcp off 
    Board    Backlog    Sprints    Runs                                                              
-─━━━━━━━━━──────────────────────────────                                                            
+─────────────────────━━━━━━━━━━━────────                                                            
+  ● Sprint 1  active                                                              2 issues · 5 pts  
+▸ ● △ JEE-1      Design the kanban board layout                                                5pt  
+  ● ■ JEE-2      Wire up the MCP status pill                                                        
                                                                                                     
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                          ╭──────────────────────────────────────────────╮                          
-                          │                                              │                          
-                          │  Projects                                    │                          
-                          │                                              │                          
-                          │  ▸ Jeera JEE  • active                       │                          
-                          │      /tmp/jeera                              │                          
-                          │                                              │                          
-                          │  ↑/↓ select · enter open · n new · esc       │                          
-                          │  close                                       │                          
-                          │                                              │                          
-                          ╰──────────────────────────────────────────────╯                          
+  ● Sprint 2  future                                                                       1 issue  
+  ● ▽ JEE-3      Plan the sprints view                                                              
                                                                                                     
                                                                                                     
                                                                                                     
@@ -27,4 +15,16 @@
                                                                                                     
                                                                                                     
                                                                                                     
- tab next view  ↑/k up  ↓/j down  ←/h prev column  →/l next column  n new  ? help  q quit
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+ tab next view  ↑/k up  ↓/j down  enter open  a move  ⌫ to backlog  n new sprint  ? help  q quit

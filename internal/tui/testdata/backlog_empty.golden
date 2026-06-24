@@ -1,24 +1,6 @@
   Jeera  Jeera JEE                                                                        ● mcp off 
    Board    Backlog    Sprints    Runs                                                              
-─━━━━━━━━━──────────────────────────────                                                            
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                          ╭──────────────────────────────────────────────╮                          
-                          │                                              │                          
-                          │  Projects                                    │                          
-                          │                                              │                          
-                          │  ▸ Jeera JEE  • active                       │                          
-                          │      /tmp/jeera                              │                          
-                          │                                              │                          
-                          │  ↑/↓ select · enter open · n new · esc       │                          
-                          │  close                                       │                          
-                          │                                              │                          
-                          ╰──────────────────────────────────────────────╯                          
+──────────━━━━━━━━━━━───────────────────                                                            
                                                                                                     
                                                                                                     
                                                                                                     
@@ -27,4 +9,22 @@
                                                                                                     
                                                                                                     
                                                                                                     
- tab next view  ↑/k up  ↓/j down  ←/h prev column  →/l next column  n new  ? help  q quit
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                          Backlog is clear                                          
+                                                                                                    
+                         Every issue is in a sprint, or there are none yet.                         
+                                         Press n to add one.                                        
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+                                                                                                    
+ tab next view  n new  p projects  m mcp  , settings  r refresh  ? help  q quit

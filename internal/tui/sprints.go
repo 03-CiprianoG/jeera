@@ -10,7 +10,6 @@ import (
 
 	"github.com/03-CiprianoG/jeera/internal/core"
 	"github.com/03-CiprianoG/jeera/internal/store"
-	"github.com/03-CiprianoG/jeera/internal/tui/theme"
 )
 
 // sprintsData is everything the Sprints view needs for the active project: the
@@ -27,12 +26,41 @@ type sprintRow struct {
 	points int // Σ story points across the sprint's issues
 }
 
-// flatIssues is the sprints' issues in display order, which is also the order
-// the single Sprints cursor (m.sprintSel) walks.
+// flatIssues is the sprints' issues in display order.
 func (sd sprintsData) flatIssues() []core.Issue {
 	var out []core.Issue
 	for _, sr := range sd.sprints {
 		out = append(out, sr.issues...)
+	}
+	return out
+}
+
+// sprintItemKind distinguishes the two things the Sprints cursor can land on.
+type sprintItemKind int
+
+const (
+	itemHeader sprintItemKind = iota // a sprint header — start/finish/delete/add-issue
+	itemIssue                        // an issue inside a sprint — open/move/return-to-backlog
+)
+
+// sprintItem is one selectable row in the Sprints view. Both kinds carry the
+// containing sprint, so an action on an issue knows which sprint it belongs to.
+type sprintItem struct {
+	kind   sprintItemKind
+	sprint core.Sprint
+	issue  core.Issue
+}
+
+// items is the flat list the Sprints cursor (m.sprintSel) walks: each sprint's
+// header followed by its issues. Empty sprints contribute just their header, so
+// they can still be started, deleted, or have an issue added.
+func (sd sprintsData) items() []sprintItem {
+	var out []sprintItem
+	for _, sr := range sd.sprints {
+		out = append(out, sprintItem{kind: itemHeader, sprint: sr.sprint})
+		for _, iss := range sr.issues {
+			out = append(out, sprintItem{kind: itemIssue, sprint: sr.sprint, issue: iss})
+		}
 	}
 	return out
 }
@@ -93,7 +121,7 @@ func sprintStateOrder(s core.SprintState) int {
 }
 
 func (m *Model) clampSprintSel() {
-	n := len(m.sprints.flatIssues())
+	n := len(m.sprints.items())
 	if m.sprintSel >= n {
 		m.sprintSel = n - 1
 	}
@@ -102,18 +130,27 @@ func (m *Model) clampSprintSel() {
 	}
 }
 
-// selectedSprintIssue returns the issue the Sprints cursor is on, if any.
-func (m Model) selectedSprintIssue() (core.Issue, bool) {
-	flat := m.sprints.flatIssues()
-	if m.sprintSel < 0 || m.sprintSel >= len(flat) {
-		return core.Issue{}, false
+// selectedSprintItem returns the row (sprint header or issue) the cursor is on.
+func (m Model) selectedSprintItem() (sprintItem, bool) {
+	items := m.sprints.items()
+	if m.sprintSel < 0 || m.sprintSel >= len(items) {
+		return sprintItem{}, false
 	}
-	return flat[m.sprintSel], true
+	return items[m.sprintSel], true
 }
 
-// updateSprints handles keys specific to the Sprints view: the cursor walks the
-// issues across all sprints, and enter opens the selected one. Sprint headers
-// are skipped — they orient, they aren't selectable.
+// selectedSprintIssue returns the issue the cursor is on, if it's on an issue
+// (not a sprint header).
+func (m Model) selectedSprintIssue() (core.Issue, bool) {
+	if it, ok := m.selectedSprintItem(); ok && it.kind == itemIssue {
+		return it.issue, true
+	}
+	return core.Issue{}, false
+}
+
+// updateSprints handles keys specific to the Sprints view. The cursor walks both
+// sprint headers and the issues within them; the action a key takes depends on
+// which kind is selected, so one key set covers the whole planning surface.
 func (m Model) updateSprints(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch {
 	case key.Matches(msg, m.keys.Up):
@@ -122,12 +159,89 @@ func (m Model) updateSprints(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Down):
 		m.sprintSel++
 		m.clampSprintSel()
+	case key.Matches(msg, m.keys.New): // n: plan a new sprint, regardless of selection
+		if m.active.ID != 0 {
+			m.form = newCreateSprintForm()
+			m.mode = modeForm
+			return m, m.form.focusCmd()
+		}
 	case key.Matches(msg, m.keys.Enter):
-		if iss, ok := m.selectedSprintIssue(); ok {
-			m.detail = newDetail(m.store, m.runMgr, m.sched, m.theme, iss.ID, m.width, m.height)
+		if it, ok := m.selectedSprintItem(); ok && it.kind == itemIssue {
+			m.detail = newDetail(m.store, m.runMgr, m.sched, m.theme, it.issue.ID, m.width, m.height)
 			m.mode = modeDetail
 		}
+	case key.Matches(msg, m.keys.Cycle): // s: advance the selected sprint's state
+		if it, ok := m.selectedSprintItem(); ok && it.kind == itemHeader {
+			return m.cycleSprintState(it.sprint)
+		}
+	case key.Matches(msg, m.keys.Assign): // a: header → add an issue; issue → move it
+		if it, ok := m.selectedSprintItem(); ok {
+			if it.kind == itemHeader {
+				return m.openBacklogPicker(it.sprint.ID, it.sprint.Name)
+			}
+			return m.openSprintPicker(it.issue)
+		}
+	case key.Matches(msg, m.keys.Unsprint): // ⌫: pull an issue back to the backlog
+		if it, ok := m.selectedSprintItem(); ok && it.kind == itemIssue {
+			if err := m.store.AddIssueToSprint(it.issue.ID, nil); err != nil {
+				return m, reportErr(err)
+			}
+			m.reload()
+			return m, toast(it.issue.Key + " → backlog")
+		}
+	case key.Matches(msg, m.keys.Delete): // x: delete the selected sprint
+		if it, ok := m.selectedSprintItem(); ok && it.kind == itemHeader {
+			return m.confirmDeleteSprint(it.sprint)
+		}
 	}
+	return m, nil
+}
+
+// cycleSprintState advances a sprint through its lifecycle: future → active →
+// completed → future, persisting the change so the board and agents see it.
+func (m Model) cycleSprintState(sp core.Sprint) (tea.Model, tea.Cmd) {
+	var verb string
+	switch sp.State {
+	case core.SprintFuture:
+		sp.State, verb = core.SprintActive, "started"
+	case core.SprintActive:
+		sp.State, verb = core.SprintCompleted, "completed"
+	default:
+		sp.State, verb = core.SprintFuture, "reopened"
+	}
+	if err := m.store.UpdateSprint(sp); err != nil {
+		return m, reportErr(err)
+	}
+	m.reload()
+	return m, toast(verb + " " + sp.Name)
+}
+
+// sprintCycleVerb is the footer label for the s key on a sprint header, matching
+// what the next press will actually do.
+func sprintCycleVerb(s core.SprintState) string {
+	switch s {
+	case core.SprintFuture:
+		return "start"
+	case core.SprintActive:
+		return "finish"
+	default:
+		return "reopen"
+	}
+}
+
+// confirmDeleteSprint asks before removing a sprint; its issues fall back to the
+// backlog (the schema's ON DELETE SET NULL), they are not destroyed.
+func (m Model) confirmDeleteSprint(sp core.Sprint) (tea.Model, tea.Cmd) {
+	m.confirm = fmt.Sprintf("Delete sprint %q? Its issues return to the backlog.", sp.Name)
+	id := sp.ID
+	st := m.store
+	m.onConfirm = func() tea.Cmd {
+		if err := st.DeleteSprint(id); err != nil {
+			return reportErr(err)
+		}
+		return toast("deleted sprint")
+	}
+	m.mode = modeConfirm
 	return m, nil
 }
 
@@ -143,23 +257,26 @@ func (m Model) renderSprints(height int) string {
 	}
 
 	var lines []string
-	selLine, flatIdx := 0, 0
+	selLine, itemIdx := 0, 0
 	for si, sr := range m.sprints.sprints {
 		if si > 0 {
 			lines = append(lines, "")
 		}
-		lines = append(lines, m.renderSprintHeader(sr))
+		if itemIdx == m.sprintSel {
+			selLine = len(lines)
+		}
+		lines = append(lines, m.renderSprintHeader(sr, itemIdx == m.sprintSel))
+		itemIdx++
 		if len(sr.issues) == 0 {
-			lines = append(lines, "   "+t.HelpDesc.Render("— no issues —"))
+			lines = append(lines, "     "+t.HelpDesc.Render("— no issues —"))
 			continue
 		}
 		for _, iss := range sr.issues {
-			selected := flatIdx == m.sprintSel
-			if selected {
+			if itemIdx == m.sprintSel {
 				selLine = len(lines)
 			}
-			lines = append(lines, m.renderSprintIssue(iss, selected))
-			flatIdx++
+			lines = append(lines, m.renderIssueRow(iss, itemIdx == m.sprintSel, m.sprints.statuses))
+			itemIdx++
 		}
 	}
 
@@ -167,9 +284,13 @@ func (m Model) renderSprints(height int) string {
 	return fitHeight(lipgloss.JoinVertical(lipgloss.Left, lines[start:end]...), height)
 }
 
-func (m Model) renderSprintHeader(sr sprintRow) string {
+func (m Model) renderSprintHeader(sr sprintRow, selected bool) string {
 	t := m.theme
 	c := t.SprintStateColor(sr.sprint.State)
+	marker := "  "
+	if selected {
+		marker = t.HelpKey.Render("▸ ")
+	}
 	dot := lipgloss.NewStyle().Foreground(c).Render("●")
 	// Cap the name so a long one never pushes the state/dates/meta off a narrow
 	// terminal — the rest of the row is short and fixed.
@@ -180,7 +301,7 @@ func (m Model) renderSprintHeader(sr sprintRow) string {
 	name := t.Title.Render(truncate(sr.sprint.Name, nameW))
 	state := lipgloss.NewStyle().Foreground(c).Render(string(sr.sprint.State))
 
-	left := dot + " " + name + "  " + state
+	left := marker + dot + " " + name + "  " + state
 	if dr := sprintDates(sr.sprint); dr != "" {
 		left += "  " + t.HelpDesc.Render(dr)
 	}
@@ -192,45 +313,13 @@ func (m Model) renderSprintHeader(sr sprintRow) string {
 	return spread(left, t.CardMeta.Render(meta), m.width-2)
 }
 
-func (m Model) renderSprintIssue(iss core.Issue, selected bool) string {
-	t := m.theme
-	cat := core.CategoryTodo
-	if s, ok := m.sprints.statuses[iss.StatusID]; ok {
-		cat = s.Category
-	}
-	stDot := lipgloss.NewStyle().Foreground(t.CategoryColor(cat)).Render("●")
-	pri := lipgloss.NewStyle().Foreground(t.PriorityColor(iss.Priority)).Render(theme.PriorityGlyph(iss.Priority))
-
-	marker := "  "
-	titleStyle := t.CardTitle
-	if selected {
-		marker = t.HelpKey.Render("▸ ")
-		titleStyle = titleStyle.Bold(true)
-	}
-
-	// Title takes whatever remains after the fixed-width lead (marker, dots, key)
-	// and a right-aligned points column.
-	titleW := m.width - 24
-	if titleW < 8 {
-		titleW = 8
-	}
-	left := marker + stDot + " " + pri + " " +
-		t.CardKey.Render(fmt.Sprintf("%-10s", iss.Key)) + " " +
-		titleStyle.Render(truncate(iss.Title, titleW))
-
-	if iss.StoryPoints != nil {
-		return spread(left, t.CardMeta.Render(fmt.Sprintf("%dpt", *iss.StoryPoints)), m.width-2)
-	}
-	return left
-}
-
 func (m Model) sprintsEmpty() string {
 	t := m.theme
 	return lipgloss.JoinVertical(lipgloss.Center,
 		t.Title.Render("No sprints yet"),
 		"",
 		t.HelpDesc.Render("Sprints group issues into time-boxes."),
-		t.HelpDesc.Render("Create one over MCP and it shows up here."),
+		t.HelpDesc.Render("Press n to plan your first sprint."),
 	)
 }
 

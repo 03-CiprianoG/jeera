@@ -38,17 +38,17 @@ func seedActivePlusEmpty(t *testing.T, m *Model) {
 
 func TestSprintsLiveReanchorsCursor(t *testing.T) {
 	m, st := newTestModel(t)
-	seedSprints(t, &m)
-	flat := m.sprints.flatIssues() // [JEE-1, JEE-2, JEE-3], active sprint leading
-	if len(flat) != 3 {
-		t.Fatalf("expected 3 issues across sprints, got %d", len(flat))
+	seedSprints(t, &m) // rows: [hdr S1, JEE-1, JEE-2, hdr S2, JEE-3]
+	m.sprintSel = 2    // JEE-2 (an issue; row 0 is the sprint header)
+	sel, ok := m.selectedSprintIssue()
+	if !ok {
+		t.Fatal("expected an issue selected at row 2")
 	}
-	m.sprintSel = 1 // the middle issue
-	want := flat[1].ID
+	want := sel.ID
 
-	// An issue ABOVE the selection is deleted while the Sprints view is open, so the
-	// flat list reindexes. Re-anchoring must keep the SAME issue selected — a plain
-	// clamp would leave the cursor on a different one.
+	// Delete an issue ABOVE the selection; the rows reindex. Re-anchoring must keep
+	// the SAME issue selected, not whatever slides into row 2.
+	flat := m.sprints.flatIssues() // [JEE-1, JEE-2, JEE-3]
 	if err := st.DeleteIssue(flat[0].ID); err != nil {
 		t.Fatalf("DeleteIssue: %v", err)
 	}
@@ -63,8 +63,9 @@ func TestSprintsLiveReanchorsCursor(t *testing.T) {
 
 func TestSprintsLiveReloadClampsOnShrink(t *testing.T) {
 	m, st := newTestModel(t)
-	seedActivePlusEmpty(t, &m) // two issues
-	m.sprintSel = 1            // the last one
+	seedActivePlusEmpty(t, &m) // rows: [hdr S1, iss1, iss2, hdr S2]
+	rowsBefore := len(m.sprints.items())
+	m.sprintSel = rowsBefore - 1 // the empty sprint's header (last row)
 
 	flat := m.sprints.flatIssues()
 	if err := st.DeleteIssue(flat[len(flat)-1].ID); err != nil {
@@ -73,11 +74,14 @@ func TestSprintsLiveReloadClampsOnShrink(t *testing.T) {
 	next, _ := m.Update(storeEventMsg{})
 	m = next.(Model)
 
-	if n := len(m.sprints.flatIssues()); n != 1 {
-		t.Errorf("flat list should have shrunk to 1, got %d", n)
+	if got := len(m.sprints.items()); got != rowsBefore-1 {
+		t.Errorf("rows should drop to %d, got %d", rowsBefore-1, got)
 	}
-	if m.sprintSel != 0 {
-		t.Errorf("after the last issue vanished, cursor = %d, want 0", m.sprintSel)
+	if m.sprintSel >= len(m.sprints.items()) {
+		t.Fatalf("cursor %d out of range after shrink (rows=%d)", m.sprintSel, len(m.sprints.items()))
+	}
+	if it, ok := m.selectedSprintItem(); !ok || it.kind != itemHeader {
+		t.Error("cursor should re-anchor to the empty sprint header it was on")
 	}
 }
 
@@ -92,16 +96,25 @@ func TestGoldenSprintsWithEmptySprint(t *testing.T) {
 	goldenFile(t, "sprints_empty_sprint", out)
 }
 
-func TestSprintsEmptySprintAddsNoSelectableRow(t *testing.T) {
+func TestSprintsEmptySprintHeaderSelectable(t *testing.T) {
 	m, _ := newTestModel(t)
-	seedActivePlusEmpty(t, &m) // the active sprint has two issues; the future sprint is empty
-	if n := len(m.sprints.flatIssues()); n != 2 {
-		t.Fatalf("an empty sprint must not add selectable issues, flat = %d", n)
+	seedActivePlusEmpty(t, &m) // S1: two issues; S2: empty
+	// Rows: [hdr S1, iss1, iss2, hdr S2]. The empty sprint contributes its header
+	// (so it can be started/deleted/added to) but no issue rows.
+	if got := len(m.sprints.items()); got != 4 {
+		t.Fatalf("expected 4 rows, got %d", got)
 	}
-	m.sprintSel = 1 // the last real issue
-	next, _ := m.Update(keyPress("j"))
-	if got := next.(Model).sprintSel; got != 1 {
-		t.Errorf("down past the last issue should clamp (the empty sprint adds no row), got %d", got)
+	if got := len(m.sprints.flatIssues()); got != 2 {
+		t.Fatalf("the empty sprint must add no issues, flat = %d", got)
+	}
+	m.sprintSel = 3 // the empty sprint's header
+	it, ok := m.selectedSprintItem()
+	if !ok || it.kind != itemHeader {
+		t.Fatalf("the empty sprint header should be selectable")
+	}
+	next, _ := m.Update(keyPress("enter")) // a header opens nothing
+	if next.(Model).mode != modeNormal {
+		t.Error("enter on a sprint header should not open a detail")
 	}
 }
 
@@ -143,11 +156,11 @@ func TestSprintStateOrder(t *testing.T) {
 
 func TestSprintsClampSel(t *testing.T) {
 	m, _ := newTestModel(t)
-	seedSprints(t, &m) // three issues
+	seedSprints(t, &m) // 5 rows (2 headers + 3 issues)
 	m.sprintSel = 9
 	m.clampSprintSel()
-	if m.sprintSel != 2 {
-		t.Errorf("out-of-range clamp = %d, want last index 2", m.sprintSel)
+	if m.sprintSel != 4 {
+		t.Errorf("out-of-range clamp = %d, want last row 4", m.sprintSel)
 	}
 	m.sprints = sprintsData{}
 	m.sprintSel = 5
@@ -177,7 +190,7 @@ func TestSprintsScrollKeepsSelectionVisible(t *testing.T) {
 	m, _ := newTestModel(t)
 	seedSprints(t, &m)
 	m.height = 9 // a short terminal forces the sprint list to scroll
-	m.sprintSel = len(m.sprints.flatIssues()) - 1
+	m.sprintSel = len(m.sprints.items()) - 1
 	last, _ := m.selectedSprintIssue()
 
 	out := render(m)

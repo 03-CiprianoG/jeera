@@ -35,8 +35,8 @@ func (m Model) renderHeader() string {
 	return lipgloss.NewStyle().Background(t.P.BgSurface).Width(m.width).Render(" " + inner + " ")
 }
 
-// renderNavbar is the destination strip beneath the header: Board · Sprints ·
-// Runs. The active destination carries the iris accent and a heavy underline;
+// renderNavbar is the destination strip beneath the header: Board · Backlog ·
+// Sprints · Runs. The active destination carries the iris accent and a heavy underline;
 // the inactive ones sit muted on a light hairline. The in-ticket tab strip is
 // intended to adopt this same treatment, so the two read as one system.
 func (m Model) renderNavbar() string {
@@ -46,6 +46,7 @@ func (m Model) renderNavbar() string {
 		label string
 	}{
 		{viewBoard, "Board"},
+		{viewBacklog, "Backlog"},
 		{viewSprints, "Sprints"},
 		{viewRuns, "Runs"},
 	}

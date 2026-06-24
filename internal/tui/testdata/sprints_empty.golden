@@ -1,6 +1,6 @@
   Jeera  Jeera JEE                                                                        ● mcp off 
-   Board    Sprints    Runs                                                                         
-──────────━━━━━━━━━━━────────                                                                       
+   Board    Backlog    Sprints    Runs                                                              
+─────────────────────━━━━━━━━━━━────────                                                            
                                                                                                     
                                                                                                     
                                                                                                     
@@ -15,7 +15,7 @@
                                            No sprints yet                                           
                                                                                                     
                                Sprints group issues into time-boxes.                                
-                             Create one over MCP and it shows up here.                              
+                                 Press n to plan your first sprint.                                 
                                                                                                     
                                                                                                     
                                                                                                     
@@ -27,4 +27,4 @@
                                                                                                     
                                                                                                     
                                                                                                     
- tab next view  p projects  m mcp  , settings  r refresh  ? help  q quit
+ tab next view  n new sprint  p projects  m mcp  , settings  r refresh  ? help  q quit

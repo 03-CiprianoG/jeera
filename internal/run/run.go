@@ -44,6 +44,9 @@ type Manager struct {
 	mcpURL   func() string           // the live Jeera MCP URL (empty if the server is off)
 	defaults func() config.Defaults  // the live global defaults for the settings cascade
 
+	ctx  context.Context    // lifecycle; cancelled by Shutdown
+	stop context.CancelFunc // cancels ctx
+
 	mu      sync.Mutex                   // guards cancels
 	cancels map[int64]context.CancelFunc // in-flight runs, by run id
 	wg      sync.WaitGroup               // tracks launch goroutines
@@ -60,11 +63,14 @@ func NewManager(st *store.Store, dataDir string, mcpURL func() string, defaults 
 	if defaults == nil {
 		defaults = func() config.Defaults { return config.Default().Defaults }
 	}
+	ctx, stop := context.WithCancel(context.Background())
 	return &Manager{
 		store:    st,
 		dataDir:  dataDir,
 		mcpURL:   mcpURL,
 		defaults: defaults,
+		ctx:      ctx,
+		stop:     stop,
 		cancels:  make(map[int64]context.CancelFunc),
 	}
 }
@@ -98,6 +104,150 @@ func (m *Manager) Start(issue core.Issue) (core.Run, error) {
 	return pl.run, nil
 }
 
+// StartWithChildren runs the issue's child issues first — in dependency order, so
+// a blocker runs before what it blocks — and then the issue itself, each run
+// finishing before the next begins. It returns immediately; the sequence runs in
+// the background. (An issue with no children behaves like Start, just sequenced.)
+func (m *Manager) StartWithChildren(issue core.Issue) error {
+	seq, err := m.childrenThenSelf(issue)
+	if err != nil {
+		return err
+	}
+	m.wg.Add(1)
+	go func() {
+		defer m.wg.Done()
+		for _, iss := range seq {
+			if m.ctx.Err() != nil {
+				return // Shutdown: don't start the remaining children
+			}
+			m.runOne(iss)
+		}
+	}()
+	return nil
+}
+
+// runOne prepares, tracks and executes a single run synchronously — used by the
+// sequenced StartWithChildren so each run completes before the next starts.
+func (m *Manager) runOne(issue core.Issue) {
+	pl, err := m.prepare(issue)
+	if err != nil {
+		return
+	}
+	m.mu.Lock()
+	m.cancels[pl.run.ID] = pl.cancel
+	m.mu.Unlock()
+	m.execute(pl)
+}
+
+// childrenThenSelf returns the issue's children in dependency order followed by
+// the issue itself.
+func (m *Manager) childrenThenSelf(issue core.Issue) ([]core.Issue, error) {
+	kids, err := m.store.ListIssues(store.IssueFilter{ParentID: &issue.ID})
+	if err != nil {
+		return nil, err
+	}
+	return append(m.dependencyOrder(kids), issue), nil
+}
+
+// dependencyOrder topologically sorts issues so a blocker precedes the issues it
+// blocks, breaking ties by the input order. Edges come from each issue's
+// "blocked_by" links to others in the set (each relationship is stored once, so
+// reading one perspective avoids double-counting). A dependency cycle degrades
+// gracefully: the unresolved issues are appended in input order.
+func (m *Manager) dependencyOrder(issues []core.Issue) []core.Issue {
+	if len(issues) < 2 {
+		return issues
+	}
+	byID := make(map[int64]core.Issue, len(issues))
+	indeg := make(map[int64]int, len(issues))
+	for _, is := range issues {
+		byID[is.ID] = is
+		indeg[is.ID] = 0
+	}
+	blocks := make(map[int64][]int64) // blocker id -> ids it blocks (within the set)
+	for _, is := range issues {
+		links, err := m.store.ListLinks(is.ID)
+		if err != nil {
+			continue
+		}
+		for _, l := range links {
+			if l.Type != core.LinkBlockedBy {
+				continue // count each relationship once, from the blocked side
+			}
+			if _, ok := byID[l.Issue.ID]; !ok {
+				continue // blocker isn't part of this run set
+			}
+			blocks[l.Issue.ID] = append(blocks[l.Issue.ID], is.ID)
+			indeg[is.ID]++
+		}
+	}
+
+	var queue []int64
+	for _, is := range issues { // seed in input order for stable ties
+		if indeg[is.ID] == 0 {
+			queue = append(queue, is.ID)
+		}
+	}
+	out := make([]core.Issue, 0, len(issues))
+	seen := make(map[int64]bool, len(issues))
+	for len(queue) > 0 {
+		n := queue[0]
+		queue = queue[1:]
+		if seen[n] {
+			continue
+		}
+		seen[n] = true
+		out = append(out, byID[n])
+		for _, blocked := range blocks[n] {
+			if indeg[blocked]--; indeg[blocked] == 0 {
+				queue = append(queue, blocked)
+			}
+		}
+	}
+	for _, is := range issues { // anything left is in a cycle — keep input order
+		if !seen[is.ID] {
+			out = append(out, is)
+		}
+	}
+	return out
+}
+
+// DiscussCommand builds the interactive "Expand / Discuss" command: an
+// interactive claude session with Jeera's MCP attached and a preloaded prompt to
+// open the ticket for a conversation rather than autonomous work. It is meant for
+// tea.ExecProcess, which suspends the TUI while the session runs. It writes a
+// small MCP config under the data dir and errors if no MCP endpoint is live (the
+// agent would have nothing to load the ticket from).
+func (m *Manager) DiscussCommand(issue core.Issue) (*exec.Cmd, error) {
+	mcpURL := m.mcpURL()
+	if mcpURL == "" {
+		return nil, fmt.Errorf("the MCP server is off; run jeera without --no-mcp to discuss a ticket")
+	}
+	project, err := m.store.GetProject(issue.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	dir := filepath.Join(m.dataDir, "discuss")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return nil, err
+	}
+	cfgPath := filepath.Join(dir, "mcp.json")
+	cfg := fmt.Sprintf(`{"mcpServers":{"jeera":{"type":"http","url":%q}}}`, mcpURL)
+	if err := os.WriteFile(cfgPath, []byte(cfg), 0o644); err != nil {
+		return nil, err
+	}
+	// Interactive claude: no -p, the ticket prompt as the initial message, Jeera's
+	// MCP attached so the agent can load and discuss the very ticket.
+	cmd := exec.Command("claude",
+		"--mcp-config", cfgPath, "--strict-mcp-config",
+		agent.DiscussPrompt(issue.Key),
+	)
+	if project.RepoPath != "" {
+		cmd.Dir = project.RepoPath
+	}
+	return cmd, nil
+}
+
 // Stop cancels a single in-flight run, killing its process.
 func (m *Manager) Stop(runID int64) {
 	m.mu.Lock()
@@ -112,6 +262,7 @@ func (m *Manager) Stop(runID int64) {
 // record their final status. Call it before closing the store so runs neither
 // write to a torn-down database nor leave an agent process orphaned.
 func (m *Manager) Shutdown() {
+	m.stop() // signal sequenced runs to stop spawning, and cancel derived contexts
 	m.mu.Lock()
 	for _, cancel := range m.cancels {
 		cancel()
@@ -202,19 +353,29 @@ func (m *Manager) prepare(issue core.Issue) (*plan, error) {
 		MCPURL:         mcpURL,
 		PermissionMode: permMode,
 	}
-	// The context lets Stop/Shutdown kill the process; WaitDelay bounds how long
-	// a stubborn process tree may keep the pipe open after the kill signal.
-	ctx, cancel := context.WithCancel(context.Background())
+	// The context lets Stop/Shutdown kill the process; deriving it from the
+	// manager's lifecycle context means Shutdown cancels in-flight runs too.
+	// WaitDelay bounds how long a stubborn process tree may keep the pipe open
+	// after the kill signal.
+	ctx, cancel := context.WithCancel(m.ctx)
 	cmd := exec.CommandContext(ctx, prov.Binary(), prov.Args(spec)...)
 	cmd.Dir = workDir
 	cmd.WaitDelay = killGrace
 	return &plan{cmd: cmd, ctx: ctx, cancel: cancel, run: run, prov: prov, logPath: logPath}, nil
 }
 
-// launch runs the command, streaming its output to the log and updating the run
-// as the session id arrives and on completion.
+// launch is the goroutine body for a single background Start: run the plan, then
+// release the wait-group slot.
 func (m *Manager) launch(pl *plan) {
 	defer m.wg.Done()
+	m.execute(pl)
+}
+
+// execute runs a prepared plan to completion (blocking), streaming its output to
+// the log and updating the run as the session id arrives and when it finishes. It
+// owns the per-run cancel cleanup. Sequenced callers (Start-with-children) invoke
+// it directly so each run finishes before the next begins.
+func (m *Manager) execute(pl *plan) {
 	defer func() {
 		m.mu.Lock()
 		delete(m.cancels, pl.run.ID)

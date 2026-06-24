@@ -139,7 +139,7 @@ func (d *detailModel) renderFooter() string {
 	default:
 		segs := []struct{ k, v string }{
 			{"j/k", "field"}, {"h/l", "change"}, {"e", "describe"}, {"c", "comment"},
-			{"s", "start"}, {"S", "schedule"}, {"w", "worktree"}, {"esc", "back"},
+			{"s", "start"}, {"D", "+children"}, {"d", "discuss"}, {"S", "schedule"}, {"w", "worktree"}, {"esc", "back"},
 		}
 		parts := make([]string, 0, len(segs))
 		for _, s := range segs {

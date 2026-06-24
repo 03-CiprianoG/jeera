@@ -4,7 +4,7 @@
 
 **Agentic-first issue tracking that lives in your terminal.**
 
-A [lazygit](https://github.com/jesseduffield/lazygit)-inspired TUI that reimagines Jira for the age of AI agents — with a built-in [MCP](https://modelcontextprotocol.io) server so your agents always know about your tickets.
+A [lazygit](https://github.com/jesseduffield/lazygit)-inspired TUI that reimagines Jira for the age of AI agents — with a built-in [MCP](https://modelcontextprotocol.io) server so your agents always know about your tickets, and a one-key **Start** that puts those agents to work on them.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/03-CiprianoG/jeera/actions/workflows/ci.yml/badge.svg)](https://github.com/03-CiprianoG/jeera/actions/workflows/ci.yml)
@@ -14,76 +14,157 @@ A [lazygit](https://github.com/jesseduffield/lazygit)-inspired TUI that reimagin
 </div>
 
 > [!WARNING]
-> **🚧 Early days.** This repository is being set up and Jeera is being built in the open. The architecture below is settled; the implementation lands incrementally via pull requests. Expect rapid change — and feel free to get involved.
+> **🚧 Built in the open.** The architecture is settled and the implementation lands incrementally via pull requests, each one tested and released under [semantic versioning](https://semver.org). The **Status** column below tracks what's usable today versus what's on the way.
 
 ## What is Jeera?
 
-Jeera is an open-source issue tracker that runs entirely in your terminal. Think of the keyboard-driven flow of `lazygit`, applied to issues, sprints and boards — but designed from the first commit for a world where **AI agents are first-class operators**, not bystanders.
+Jeera is an open-source issue tracker that runs entirely in your terminal. Take the keyboard-driven flow of `lazygit`, apply it to issues, epics, sprints and boards — then design from the first commit for a world where **AI agents are first-class operators**, not bystanders.
 
-Jeera is **local-first** and the **system of record**: it owns your tickets in a local store on your machine. A human drives the board through a fast, beautiful TUI; agents drive the same tickets through a built-in **Model Context Protocol server**. Both read and write one source of truth, so they never drift apart.
+Jeera is **local-first** and the **system of record**: it owns your tickets in a local SQLite store on your machine. A human drives the board through a fast, calm TUI; agents drive the *same* tickets through a built-in **Model Context Protocol server**. Both read and write one source of truth, so they never drift apart — move a card in the TUI and an agent sees it; let an agent transition an issue and the board updates live.
+
+And because Jeera knows how to talk to the AI coding CLIs already on your machine, a ticket isn't just something you track — it's something you can **run**.
 
 ## Why "agentic-first"?
 
-Most tools bolt a chat box onto a GUI. Jeera inverts that. The agent isn't a feature *inside* the app — the app is a clean surface that *agents connect to*:
+Most tools bolt a chat box onto a GUI. Jeera inverts that. The agent isn't a feature *inside* the app — the app is a clean surface that agents connect to **and** a launchpad that puts agents to work:
 
-- Run **`jeera`** and you get two things at once: a snappy terminal board for you **and** a built-in MCP server (local HTTP) running right beside it.
-- Point any MCP client (Claude Code, Claude Desktop, Cursor, a cron agent…) at that server — *if and where you choose* — and it can **list, create, transition, and comment on issues**, instantly aware of every ticket, with no scraping and no glue code.
+- Run **`jeera`** and you get two things at once: a snappy terminal board for you **and** an embedded MCP server (local HTTP) running right beside it.
+- Point any MCP client (Claude Code, Claude Desktop, Cursor, a cron agent…) at that server — *if and where you choose* — and it can **list, create, transition, comment on, and link issues**, instantly aware of every ticket, with no scraping and no glue code.
+- Hit **Start** on a ticket and Jeera spawns a local coding agent (`claude`, `codex`) to actually *do the work* — in an isolated git worktree, pointed back at Jeera's own MCP so it updates the ticket as it goes. No API keys, no SDKs: it drives the CLIs you already have.
 
-That means an agent can triage your backlog while you sleep, file issues from a failing CI run, or keep a board in sync with your codebase — all through a typed, documented protocol. One command — no separate server to babysit.
+## Features
 
-## Planned features
+> Legend: ✅ available · 🔭 in progress · 🔜 planned
 
-- ⌨️ **Keyboard-first Kanban board** — vim-style navigation across backlog → done.
-- 🤖 **Built-in MCP server** — starts automatically with `jeera` (local HTTP); typed tools for agents, ready whenever you connect a client.
-- 🗃️ **Local-first system of record** — your tickets live on your machine; no account required.
-- 🧠 **Claude-first, pluggable AI layer** — assistive features (e.g. `jeera triage`) behind a provider interface.
-- 📦 **Single static binary** — `go install` or grab a release; no runtime to manage.
-- 🔁 **Optional Jira Cloud import/sync** *(later)* — bring an existing project in.
+### Jira, reimagined for the terminal
 
-## Architecture
+| Feature | Status | Notes |
+|---|:---:|---|
+| **Projects** bound to a git repo | ✅ | Each project points at a repository; switch between many |
+| **Issues** — epics, stories, tasks, bugs, subtasks | ✅ | Per-project keys (`JEE-12`), Markdown descriptions |
+| **Statuses** & a configurable board | ✅ | Named columns grouped into To Do / In Progress / Done lanes |
+| **Priority**, **story points**, **tags** | ✅ | Five priority levels, point estimates, project-scoped labels |
+| **Sprints** | ✅ | Time-boxed, future/active/completed, backlog ↔ sprint |
+| **Relationships** | ✅ | blocks / blocked-by / relates / duplicates, shown from both sides |
+| **Model assignees** | ✅ | Work is assigned to a *model* — provider + model + reasoning effort |
+| **Comments & activity** | ✅ | Humans and agent runs both post to the timeline |
+| **Attachments** | 🔜 | Files referenced by path; capability-gated inline image preview |
+| **Kanban board** (keyboard-first) | 🔭 | vim-style navigation, move cards across columns |
+| **Backlog · Sprints · Epics · Ticket detail** views | 🔭 | Rich Markdown editor with live preview |
 
-**One binary, one command, one source of truth.** Running `jeera` starts the TUI and an embedded MCP server (local HTTP) together — both backed by the same core and store:
+### Jeera superpowers
+
+| Feature | Status | Notes |
+|---|:---:|---|
+| **Embedded MCP server** | 🔭 | Starts with `jeera` over local HTTP; typed tools for agents |
+| **Start a ticket** | 🔜 | Spawn `claude`/`codex` on the issue, streamed into a Runs view |
+| **Start with children** | 🔜 | Resolve sub-issues in dependency order, then the parent |
+| **Schedule Start** | 🔜 | Cron a ticket to run while your machine is on |
+| **Expand / Discuss** | 🔜 | Drop into an interactive agent session pre-loaded with the ticket |
+| **Run versioning** | 🔜 | Every run is a versioned, resumable, forkable session |
+| **Per-ticket git worktrees** | 🔜 | Isolate each run on its own branch (default on, toggle per ticket) |
+| **Model + effort picker** | 🔜 | Choose the provider, model and reasoning effort per ticket |
+| **Settings & defaults** | 🔜 | Global → per-project → per-ticket configuration cascade |
+
+## How it runs
+
+**One binary, one command, one source of truth.** Running `jeera` starts the TUI and the embedded MCP server together — both backed by the same core and store, with an execution engine and scheduler that drive your local AI CLIs:
 
 ```
-                  ┌─────────────────────────────────┐
-   You  ────────► │              jeera              │ ◄──────── AI agents
-  (keyboard)      │                                 │       (Claude Code,
-                  │   ┌──────────┐   ┌───────────┐  │        Cursor, cron…)
-                  │   │   TUI    │   │    MCP     │  │
-                  │   │ Bubble   │   │  server    │  │   via the Model
-                  │   │  Tea v2  │   │   (HTTP)   │  │   Context Protocol
-                  │   └────┬─────┘   └─────┬──────┘  │
-                  │        └───────┬───────┘         │
-                  │            core + store          │
-                  │        (one source of truth)     │
-                  └─────────────────────────────────┘
+                  ┌──────────────────────────────────────────────┐
+   You  ────────► │                    jeera                      │ ◄──── AI agents
+  (keyboard)      │                                              │      (Claude Code,
+                  │   ┌──────────┐              ┌─────────────┐  │       Cursor, cron…)
+                  │   │   TUI    │              │     MCP     │  │   via the Model
+                  │   │ Bubble   │              │   server    │  │   Context Protocol
+                  │   │  Tea v2  │              │   (HTTP)    │  │
+                  │   └────┬─────┘              └──────┬──────┘  │
+                  │        └──────────┬────────────────┘         │
+                  │              core + store                    │
+                  │          (one local source of truth)         │
+                  │        ┌──────────┴───────────┐              │
+                  │   ┌────┴─────┐          ┌──────┴──────┐       │
+                  │   │ execution│          │  scheduler  │       │
+                  │   │  engine  │          │  (cron)     │       │
+                  │   └────┬─────┘          └─────────────┘       │
+                  └────────┼─────────────────────────────────────┘
+                           ▼
+                  spawns  claude / codex  in a git worktree,
+                  pointed back at Jeera's own MCP server
 ```
 
-Prefer just one of them? `jeera --headless` runs only the server; `jeera --no-mcp` runs only the board.
+| Command | Result |
+|---|---|
+| `jeera` | TUI **and** MCP server (default) |
+| `jeera --headless` | MCP server only (no TUI) |
+| `jeera --no-mcp` | TUI only (no MCP server) |
+| `jeera version` | print version and exit |
+
+## Install
+
+> Pre-built release binaries and `go install` land with **v0.1.0**. For now, build from source.
+
+```sh
+git clone https://github.com/03-CiprianoG/jeera.git
+cd jeera
+go build -o jeera .     # requires Go 1.25+ ; produces a single static binary (CGO-free)
+./jeera version
+```
+
+Jeera stores its data under your XDG data directory (`~/.local/share/jeera/jeera.db`) and reads configuration from `~/.config/jeera/`. Both honor `XDG_*` and the `JEERA_DATA_DIR` / `JEERA_CONFIG_DIR` overrides.
+
+## Connecting an agent
+
+Once the MCP server is running (shown in the TUI's status bar), point your client at it. For Claude Code:
+
+```sh
+claude mcp add --transport http jeera http://127.0.0.1:7777
+```
+
+…or drop this into `.mcp.json` (the TUI shows the live port and a copy-paste block):
+
+```json
+{
+  "mcpServers": {
+    "jeera": { "type": "http", "url": "http://127.0.0.1:7777" }
+  }
+}
+```
+
+## Screenshots
+
+> 📸 Coming with **v0.1.0** (the first interactive board). This section will showcase the Kanban board, the ticket detail editor, the live Runs view, and the MCP status panel.
 
 ## Stack
 
-Chosen deliberately, not by default:
+Chosen deliberately, not by default — every external API verified against current upstream releases:
 
 | Layer | Choice | Why |
 |-------|--------|-----|
-| Language | **Go** | Single static binary, trivial cross-compilation, great concurrency, large contributor pool |
-| TUI | **Bubble Tea v2** + **Lip Gloss** | The gold standard for clean, sophisticated terminal UIs; v2's renderer is built for speed |
-| Agents | **MCP Go SDK** | Official, GA, lets the same binary serve agents and humans |
-| AI | **Claude-first**, pluggable | Agentic features with a provider interface for others later |
+| Language | **Go 1.26** | Single static binary, trivial cross-compilation, strong concurrency |
+| TUI | **Bubble Tea v2** + **Lip Gloss v2** + **Bubbles v2** | The gold standard for clean terminal UIs; v2's cell renderer is built for speed |
+| Markdown | **Glamour v2** | Styled rendering of ticket descriptions |
+| Agents (server) | **MCP Go SDK** (official, GA) | The same binary serves agents and humans over Streamable HTTP |
+| Agents (execution) | **`claude` / `codex` CLIs** | Drives the tools you already have — no API keys, no SDKs |
+| Storage | **modernc.org/sqlite** (pure Go) + **goose** | Local-first system of record; keeps the binary static (no CGO) |
+| Scheduling | **gocron** | In-process cron for "Schedule Start" |
 
 ## Roadmap
 
-- [x] **M0** — Repository & open-source project setup *(you are here)*
-- [ ] **M1** — Domain model + local store
-- [ ] **M2** — Kanban board TUI
-- [ ] **M3** — MCP server (list / create / transition / comment)
-- [ ] **M4** — Claude-powered backlog triage
-- [ ] **M5** — Optional Jira Cloud import
+Released under semantic versioning; each milestone is one or more pull requests.
+
+- [x] **Foundation** — domain model + local SQLite store *(you are here)*
+- [ ] **MCP server** — typed tools over the shared store
+- [ ] **v0.1.0** — design system + Kanban board (first runnable release)
+- [ ] **v0.2.0** — ticket detail, rich text, sprints, epics, relationships, attachments
+- [ ] **v0.3.0** — execution engine (Start / worktrees / runs / versioning)
+- [ ] **v0.4.0** — scheduling (Schedule Start)
+- [ ] **v0.5.0** — settings, config cascade, project management
+- [ ] **v1.0.0** — feature-complete, cross-platform release binaries
 
 ## Contributing
 
-Contributions are very welcome — especially this early, when the foundations are still being poured. See **[CONTRIBUTING.md](CONTRIBUTING.md)**. In short: `main` is protected, so all changes come in via pull request and must pass CI.
+Contributions are very welcome — especially this early, while the foundations are being poured. See **[CONTRIBUTING.md](CONTRIBUTING.md)**. In short: `main` is protected, so all changes come in via pull request, must pass CI, and follow [Conventional Commits](https://www.conventionalcommits.org). See **[CHANGELOG.md](CHANGELOG.md)** for what's landed.
 
 By participating you agree to our [Code of Conduct](CODE_OF_CONDUCT.md).
 
@@ -93,4 +174,4 @@ By participating you agree to our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Acknowledgements
 
-Standing on the shoulders of [Charm](https://charm.sh) (Bubble Tea & Lip Gloss), the [Model Context Protocol](https://modelcontextprotocol.io), and [lazygit](https://github.com/jesseduffield/lazygit) for the inspiration.
+Standing on the shoulders of [Charm](https://charm.sh) (Bubble Tea, Lip Gloss & Glamour), the [Model Context Protocol](https://modelcontextprotocol.io), and [lazygit](https://github.com/jesseduffield/lazygit) for the inspiration.

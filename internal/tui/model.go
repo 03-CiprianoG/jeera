@@ -202,6 +202,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case clearToastMsg:
 		m.toastText = ""
 		return m, nil
+	case discussFinishedMsg:
+		// The interactive session may have changed the ticket; reload both views.
+		if msg.err != nil {
+			m.errText = "discuss: " + msg.err.Error()
+		}
+		m.reload()
+		if m.mode == modeDetail && m.detail != nil {
+			m.detail.reload()
+		}
+		return m, nil
 	case tea.KeyPressMsg:
 		return m.handleKey(msg)
 	}

@@ -198,6 +198,10 @@ func (d *detailModel) updateViewing(msg tea.Msg) (tea.Cmd, bool) {
 		return d.startInput(ikComment, ""), false
 	case "s":
 		d.startRun()
+	case "D":
+		d.startWithChildren()
+	case "d":
+		return d.discuss(), false
 	case "S":
 		return d.startInput(ikCron, ""), false
 	case "w":
@@ -254,6 +258,39 @@ func (d *detailModel) unschedule() {
 	}
 	d.err = ""
 	d.reload()
+}
+
+// startWithChildren runs this ticket's children in dependency order, then the
+// ticket itself.
+func (d *detailModel) startWithChildren() {
+	if d.runMgr == nil {
+		d.err = "run manager unavailable"
+		return
+	}
+	if err := d.runMgr.StartWithChildren(d.issue); err != nil {
+		d.err = err.Error()
+		return
+	}
+	d.err = ""
+	d.reload()
+}
+
+// discuss returns a command that suspends the TUI and drops into an interactive
+// agent session preloaded with this ticket. On exit the TUI resumes.
+func (d *detailModel) discuss() tea.Cmd {
+	if d.runMgr == nil {
+		d.err = "run manager unavailable"
+		return nil
+	}
+	cmd, err := d.runMgr.DiscussCommand(d.issue)
+	if err != nil {
+		d.err = err.Error()
+		return nil
+	}
+	d.err = ""
+	return tea.ExecProcess(cmd, func(err error) tea.Msg {
+		return discussFinishedMsg{err: err}
+	})
 }
 
 // toggleWorktree flips whether this ticket's runs execute in an isolated git

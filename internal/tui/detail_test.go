@@ -230,6 +230,34 @@ func TestDetailScheduleRejectsBadCron(t *testing.T) {
 	}
 }
 
+func TestDetailStartWithChildrenNeedsRunMgr(t *testing.T) {
+	d, _, _ := newDetailForTest(t) // no run manager
+	d.startWithChildren()
+	if d.err == "" {
+		t.Error("start-with-children without a run manager should surface an error")
+	}
+}
+
+func TestDetailDiscussNoMCPNoCommand(t *testing.T) {
+	st, err := store.Open(t.TempDir() + "/jeera.db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	p, _ := st.CreateProject(core.Project{Name: "Jeera", KeyPrefix: "JEE", RepoPath: "/tmp/jeera"})
+	iss, _ := st.CreateIssue(core.Issue{ProjectID: p.ID, Title: "discuss me"})
+	// A run manager with no live MCP endpoint.
+	mgr := run.NewManager(st, t.TempDir(), func() string { return "" }, nil)
+	d := newDetail(st, mgr, nil, theme.New(), iss.ID, 100, 30)
+
+	if cmd := d.discuss(); cmd != nil {
+		t.Error("discuss with no MCP should not return a command")
+	}
+	if d.err == "" {
+		t.Error("discuss with no MCP should surface an error")
+	}
+}
+
 func TestGoldenDetail(t *testing.T) {
 	d, st, iss := newDetailForTest(t)
 	// Enrich the issue so the view exercises description, assignee, points, tags.

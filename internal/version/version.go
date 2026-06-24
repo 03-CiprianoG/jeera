@@ -7,7 +7,7 @@ package version
 // -ldflags "-X .../version.Version=... -X .../version.Commit=... -X .../version.Date=...".
 var (
 	// Version is the SemVer string of this build.
-	Version = "0.5.0"
+	Version = "0.6.0"
 	// Commit is the git SHA the binary was built from.
 	Commit = ""
 	// Date is the build timestamp (RFC3339).

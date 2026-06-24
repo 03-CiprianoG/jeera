@@ -63,9 +63,9 @@ Most tools bolt a chat box onto a GUI. Jeera inverts that. The agent isn't a fea
 | **Per-ticket git worktrees** | ✅ | Each run is isolated on its own branch (default on, toggle off with `w`) |
 | **Model + effort picker** | ✅ | Choose the provider, model and reasoning effort per ticket from the detail view |
 | **Schedule Start** | ✅ | Press `S` and enter a cron spec; Jeera runs the ticket on time, persisted across restarts and headless |
-| **Start with children** | 🔜 | Resolve sub-issues in dependency order, then the parent |
+| **Start with children** | ✅ | `D` runs sub-issues in dependency order, then the parent |
+| **Expand / Discuss** | ✅ | `d` drops into an interactive agent session pre-loaded with the ticket |
 | **Settings & defaults** | ✅ | Global → per-project → per-ticket cascade; `,` edits the global defaults |
-| **Expand / Discuss** | 🔜 | Drop into an interactive agent session pre-loaded with the ticket |
 
 ## How it runs
 
@@ -179,7 +179,9 @@ Released under semantic versioning; each milestone is one or more pull requests.
 - [x] **v0.2.0** — ticket detail view: rich-text editing + all Jira fields + comments
 - [x] **v0.3.0** — execution engine: Start / worktrees / runs / versioning
 - [x] **v0.4.0** — scheduling: cron a ticket to run itself, persisted and headless
-- [x] **v0.5.0** — settings: global → project → ticket config cascade, project repo paths *(you are here)*
+- [x] **v0.5.0** — settings: global → project → ticket config cascade, project repo paths
+- [x] **v0.6.0** — agent actions: Discuss/Expand + Start-with-children *(you are here)*
+- [ ] **v0.7.0** — attachments: links, file refs, external open
 - [ ] **v1.0.0** — feature-complete, cross-platform release binaries
 
 ## Contributing

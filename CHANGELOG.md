@@ -6,6 +6,26 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-06-24
+
+Two more ways to put an agent to work on a ticket: talk it through, or run a
+whole tree of work in order.
+
+### Added
+- **Expand / Discuss** (`d` in the ticket detail view): suspend the board and drop
+  into an interactive `claude` session with Jeera's MCP attached and the ticket
+  preloaded — to clarify scope, acceptance criteria and approach before any code is
+  written. On exit the board resumes and reloads the (possibly updated) ticket.
+- **Start with children** (`D` in the ticket detail view): run a ticket's child
+  issues first — in **dependency order**, so a blocker runs before what it blocks —
+  and then the ticket itself, each run finishing before the next begins. A
+  dependency cycle degrades gracefully rather than hanging.
+
+### Changed
+- The run manager now has a lifecycle context: shutting Jeera down cancels every
+  in-flight run and stops a sequenced "Start with children" from beginning further
+  children.
+
 ## [0.5.0] - 2026-06-24
 
 Settings & the configuration cascade: set your defaults once, override them where
@@ -139,7 +159,8 @@ server, both backed by one local store.
   (MCP only), `jeera --no-mcp` (board only), `jeera version`; XDG-aware paths
   (`internal/paths`) and build identity (`internal/version`).
 
-[Unreleased]: https://github.com/03-CiprianoG/jeera/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/03-CiprianoG/jeera/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/03-CiprianoG/jeera/releases/tag/v0.6.0
 [0.5.0]: https://github.com/03-CiprianoG/jeera/releases/tag/v0.5.0
 [0.4.0]: https://github.com/03-CiprianoG/jeera/releases/tag/v0.4.0
 [0.3.0]: https://github.com/03-CiprianoG/jeera/releases/tag/v0.3.0

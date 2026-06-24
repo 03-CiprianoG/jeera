@@ -56,7 +56,7 @@ Most tools bolt a chat box onto a GUI. Jeera inverts that. The agent isn't a fea
 
 | Feature | Status | Notes |
 |---|:---:|---|
-| **Embedded MCP server** | 🔭 | Starts with `jeera` over local HTTP; typed tools for agents |
+| **Embedded MCP server** | ✅ | Serves over local HTTP with `jeera` / `jeera --headless`; 15 typed tools for agents |
 | **Start a ticket** | 🔜 | Spawn `claude`/`codex` on the issue, streamed into a Runs view |
 | **Start with children** | 🔜 | Resolve sub-issues in dependency order, then the parent |
 | **Schedule Start** | 🔜 | Cron a ticket to run while your machine is on |
@@ -153,8 +153,8 @@ Chosen deliberately, not by default — every external API verified against curr
 
 Released under semantic versioning; each milestone is one or more pull requests.
 
-- [x] **Foundation** — domain model + local SQLite store *(you are here)*
-- [ ] **MCP server** — typed tools over the shared store
+- [x] **Foundation** — domain model + local SQLite store
+- [x] **MCP server** — 15 typed tools over the shared store *(you are here)*
 - [ ] **v0.1.0** — design system + Kanban board (first runnable release)
 - [ ] **v0.2.0** — ticket detail, rich text, sprints, epics, relationships, attachments
 - [ ] **v0.3.0** — execution engine (Start / worktrees / runs / versioning)

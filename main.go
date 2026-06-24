@@ -2,16 +2,24 @@
 // starts the human's board (a Bubble Tea TUI) and an embedded MCP server over
 // local HTTP in a single process, both backed by one shared local store.
 //
-// During early development the front-ends are landing incrementally; this entry
-// point already parses the final command surface (the root command plus the
-// --headless, --no-mcp and version forms) and opens the system-of-record store.
+// The front-ends are landing incrementally; today this entry point parses the
+// final command surface (the root command plus the --headless, --no-mcp and
+// version forms), opens the system-of-record store, and serves the embedded MCP
+// server so agents can already read and write issues.
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
+	"io"
 	"os"
+	"os/signal"
+	"strconv"
+	"syscall"
+	"time"
 
+	"github.com/03-CiprianoG/jeera/internal/mcp"
 	"github.com/03-CiprianoG/jeera/internal/paths"
 	"github.com/03-CiprianoG/jeera/internal/store"
 	"github.com/03-CiprianoG/jeera/internal/version"
@@ -41,16 +49,20 @@ func main() {
 		return
 	}
 
-	if err := run(headless, noMCP); err != nil {
+	// Serve until interrupted; the context is cancelled on Ctrl-C / SIGTERM.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	if err := run(ctx, headless, noMCP, os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, "jeera:", err)
 		os.Exit(1)
 	}
 }
 
-// run opens the shared store and reports status. The TUI and MCP server are
-// wired in over the next releases; until then this verifies the store and data
-// directory resolve correctly on the host.
-func run(headless, noMCP bool) error {
+// run opens the shared store, starts the embedded MCP server (unless --no-mcp)
+// and blocks serving it until the context is cancelled. The TUI is wired in over
+// the next releases; for now the root and --headless modes both serve MCP.
+func run(ctx context.Context, headless, noMCP bool, out io.Writer) error {
 	dbPath := paths.DBPath()
 	st, err := store.Open(dbPath)
 	if err != nil {
@@ -63,20 +75,54 @@ func run(headless, noMCP bool) error {
 		return err
 	}
 
-	mode := "TUI + MCP server"
-	switch {
-	case headless:
-		mode = "MCP server only (--headless)"
-	case noMCP:
-		mode = "TUI only (--no-mcp)"
+	fmt.Fprintln(out, version.String())
+	fmt.Fprintf(out, "store:    %s\n", dbPath)
+	fmt.Fprintf(out, "projects: %d\n", len(projects))
+
+	if noMCP {
+		fmt.Fprintln(out, "mode:     TUI only (--no-mcp)")
+		fmt.Fprintln(out, "\nThe interactive board arrives in the next release.")
+		return nil
 	}
 
-	fmt.Println(version.String())
-	fmt.Printf("store:  %s\n", dbPath)
-	fmt.Printf("mode:   %s\n", mode)
-	fmt.Printf("projects: %d\n", len(projects))
-	fmt.Println("\nThe interactive board and the embedded MCP server arrive in the next release.")
-	return nil
+	srv := mcp.NewServer(mcp.NewService(st))
+	if err := srv.Start("127.0.0.1", mcpPort()); err != nil {
+		return fmt.Errorf("start MCP server: %w", err)
+	}
+	status := srv.Status()
+
+	mode := "TUI + MCP server"
+	if headless {
+		mode = "MCP server only (--headless)"
+	}
+	fmt.Fprintf(out, "mode:     %s\n", mode)
+	fmt.Fprintf(out, "mcp:      %s\n", status.URL)
+	fmt.Fprintln(out, "\nConnect an agent:")
+	fmt.Fprintf(out, "  claude mcp add --transport http jeera %s\n", status.URL)
+	fmt.Fprintln(out, "\nor add to .mcp.json:")
+	fmt.Fprintln(out, srv.ClientConfigJSON())
+	if !headless {
+		fmt.Fprintln(out, "\nThe interactive board arrives in the next release.")
+	}
+	fmt.Fprintln(out, "\nServing MCP until interrupted (Ctrl-C).")
+
+	<-ctx.Done()
+	fmt.Fprintln(out, "\nshutting down…")
+	shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return srv.Shutdown(shutCtx)
+}
+
+// mcpPort resolves the preferred MCP port: JEERA_MCP_PORT if set and valid,
+// otherwise the package default. The server falls back to a nearby free port if
+// this one is taken.
+func mcpPort() int {
+	if v := os.Getenv("JEERA_MCP_PORT"); v != "" {
+		if p, err := strconv.Atoi(v); err == nil && p >= 0 && p <= 65535 {
+			return p
+		}
+	}
+	return mcp.DefaultPort
 }
 
 func usage(fs *flag.FlagSet) func() {

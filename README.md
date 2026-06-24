@@ -26,15 +26,15 @@ Jeera is **local-first** and the **system of record**: it owns your tickets in a
 
 Most tools bolt a chat box onto a GUI. Jeera inverts that. The agent isn't a feature *inside* the app — the app is a clean surface that *agents connect to*:
 
-- Run `jeera` and you get a snappy terminal board for humans.
-- Run `jeera mcp` and any MCP client (Claude Code, Claude Desktop, Cursor, a cron agent…) can **list, create, transition, and comment on issues** — instantly aware of every ticket, with no scraping and no glue code.
+- Run **`jeera`** and you get two things at once: a snappy terminal board for you **and** a built-in MCP server (local HTTP) running right beside it.
+- Point any MCP client (Claude Code, Claude Desktop, Cursor, a cron agent…) at that server — *if and where you choose* — and it can **list, create, transition, and comment on issues**, instantly aware of every ticket, with no scraping and no glue code.
 
-That means an agent can triage your backlog while you sleep, file issues from a failing CI run, or keep a board in sync with your codebase — all through a typed, documented protocol.
+That means an agent can triage your backlog while you sleep, file issues from a failing CI run, or keep a board in sync with your codebase — all through a typed, documented protocol. One command — no separate server to babysit.
 
 ## Planned features
 
 - ⌨️ **Keyboard-first Kanban board** — vim-style navigation across backlog → done.
-- 🤖 **Built-in MCP server** (`jeera mcp`) — typed tools for agents over stdio or HTTP.
+- 🤖 **Built-in MCP server** — starts automatically with `jeera` (local HTTP); typed tools for agents, ready whenever you connect a client.
 - 🗃️ **Local-first system of record** — your tickets live on your machine; no account required.
 - 🧠 **Claude-first, pluggable AI layer** — assistive features (e.g. `jeera triage`) behind a provider interface.
 - 📦 **Single static binary** — `go install` or grab a release; no runtime to manage.
@@ -42,7 +42,7 @@ That means an agent can triage your backlog while you sleep, file issues from a 
 
 ## Architecture
 
-One binary, two front-ends, one source of truth:
+**One binary, one command, one source of truth.** Running `jeera` starts the TUI and an embedded MCP server (local HTTP) together — both backed by the same core and store:
 
 ```
                   ┌─────────────────────────────────┐
@@ -51,13 +51,15 @@ One binary, two front-ends, one source of truth:
                   │   ┌──────────┐   ┌───────────┐  │        Cursor, cron…)
                   │   │   TUI    │   │    MCP     │  │
                   │   │ Bubble   │   │  server    │  │   via the Model
-                  │   │  Tea v2  │   │ `jeera mcp`│  │   Context Protocol
+                  │   │  Tea v2  │   │   (HTTP)   │  │   Context Protocol
                   │   └────┬─────┘   └─────┬──────┘  │
                   │        └───────┬───────┘         │
                   │            core + store          │
                   │        (one source of truth)     │
                   └─────────────────────────────────┘
 ```
+
+Prefer just one of them? `jeera --headless` runs only the server; `jeera --no-mcp` runs only the board.
 
 ## Stack
 

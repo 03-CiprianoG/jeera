@@ -16,6 +16,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   static), with embedded `goose` migrations, WAL journaling, enforced foreign keys,
   per-project monotonic issue keys, filtered issue listing, bidirectional issue links,
   and an in-process change-event bus so front-ends refresh on every committed write.
+- **Embedded MCP server** (`internal/mcp`): an MCP server over local HTTP
+  (Streamable HTTP, via the official Go SDK) exposing 15 typed tools over the
+  shared store — `create_project`, `list_projects`, `get_project`, `list_issues`,
+  `get_issue`, `create_issue`, `update_issue`, `transition_issue`, `set_assignee`,
+  `add_comment`, `link_issues`, `list_sprints`, `add_to_sprint`, `list_tags`,
+  `tag_issue`. The server binds loopback (default `127.0.0.1:7777`, with port
+  fallback), logs nothing to the terminal, shuts down gracefully, and surfaces a
+  copy-paste client config. `jeera` and `jeera --headless` now serve it.
 - **Command skeleton** (`main.go`): the `jeera` root command plus `--headless`,
   `--no-mcp`, `--version` and the `version` subcommand; XDG-aware path resolution
   (`internal/paths`) and build identity (`internal/version`).

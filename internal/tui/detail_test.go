@@ -6,6 +6,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/03-CiprianoG/jeera/internal/core"
+	"github.com/03-CiprianoG/jeera/internal/run"
+	"github.com/03-CiprianoG/jeera/internal/schedule"
 	"github.com/03-CiprianoG/jeera/internal/store"
 	"github.com/03-CiprianoG/jeera/internal/tui/theme"
 )
@@ -19,7 +21,7 @@ func newDetailForTest(t *testing.T) (*detailModel, *store.Store, core.Issue) {
 	t.Cleanup(func() { _ = st.Close() })
 	p, _ := st.CreateProject(core.Project{Name: "Jeera", KeyPrefix: "JEE", RepoPath: "/tmp/jeera"})
 	iss, _ := st.CreateIssue(core.Issue{ProjectID: p.ID, Title: "Build the board", Type: core.TypeStory})
-	d := newDetail(st, nil /* no run manager in unit tests */, theme.New(), iss.ID, 100, 30)
+	d := newDetail(st, nil, nil /* no run manager or scheduler in unit tests */, theme.New(), iss.ID, 100, 30)
 	return d, st, iss
 }
 
@@ -163,6 +165,68 @@ func TestDetailEscReturnsToBoard(t *testing.T) {
 	_, back := d.updateViewing(keyPress2("esc"))
 	if !back {
 		t.Error("esc should return to the board")
+	}
+}
+
+// detailWithScheduler builds a detail model backed by a live scheduler, for the
+// "Schedule Start" flow.
+func detailWithScheduler(t *testing.T) (*detailModel, *store.Store, core.Issue) {
+	t.Helper()
+	st, err := store.Open(t.TempDir() + "/jeera.db")
+	if err != nil {
+		t.Fatalf("open: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	p, _ := st.CreateProject(core.Project{Name: "Jeera", KeyPrefix: "JEE", RepoPath: "/tmp/jeera"})
+	iss, _ := st.CreateIssue(core.Issue{ProjectID: p.ID, Title: "nightly job"})
+
+	mgr := run.NewManager(st, t.TempDir(), func() string { return "" })
+	sched, err := schedule.New(st, mgr)
+	if err != nil {
+		t.Fatalf("schedule.New: %v", err)
+	}
+	t.Cleanup(func() { _ = sched.Shutdown() })
+	if err := sched.Start(); err != nil {
+		t.Fatalf("scheduler start: %v", err)
+	}
+	d := newDetail(st, mgr, sched, theme.New(), iss.ID, 100, 30)
+	return d, st, iss
+}
+
+func TestDetailScheduleAndUnschedule(t *testing.T) {
+	d, st, iss := detailWithScheduler(t)
+
+	d.inputKind = ikCron
+	d.submitInput("0 9 * * *")
+	d.reload()
+	if d.err != "" {
+		t.Fatalf("unexpected error scheduling: %s", d.err)
+	}
+	if len(d.schedules) != 1 || d.schedules[0].CronSpec != "0 9 * * *" {
+		t.Fatalf("expected one schedule, got %+v", d.schedules)
+	}
+	// Persisted to the store, with a job binding and a future next-run.
+	stored, _ := st.ListSchedules(iss.ID)
+	if len(stored) != 1 || stored[0].JobUUID == "" || stored[0].NextRun == nil {
+		t.Errorf("schedule not persisted with a live job: %+v", stored)
+	}
+
+	d.unschedule()
+	if len(d.schedules) != 0 {
+		t.Errorf("schedule should be removed, got %+v", d.schedules)
+	}
+}
+
+func TestDetailScheduleRejectsBadCron(t *testing.T) {
+	d, _, _ := detailWithScheduler(t)
+	d.inputKind = ikCron
+	d.submitInput("not a cron")
+	if d.err == "" {
+		t.Error("a bad cron spec should surface an error")
+	}
+	d.reload()
+	if len(d.schedules) != 0 {
+		t.Errorf("a rejected schedule should not persist, got %+v", d.schedules)
 	}
 }
 

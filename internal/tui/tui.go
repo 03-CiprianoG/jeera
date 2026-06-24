@@ -8,6 +8,7 @@ import (
 	"github.com/03-CiprianoG/jeera/internal/mcp"
 	"github.com/03-CiprianoG/jeera/internal/paths"
 	"github.com/03-CiprianoG/jeera/internal/run"
+	"github.com/03-CiprianoG/jeera/internal/schedule"
 	"github.com/03-CiprianoG/jeera/internal/store"
 )
 
@@ -27,7 +28,21 @@ func Run(ctx context.Context, st *store.Store, mcpSrv *mcp.Server) error {
 	// process is orphaned and no run writes to a torn-down database.
 	defer mgr.Shutdown()
 
-	model := New(st, mcpSrv, mgr)
+	// The scheduler fires "Schedule Start" entries while Jeera is up, re-registering
+	// the persisted ones on boot. It's best-effort: a scheduler that fails to start
+	// just means timed runs are unavailable this session, not that the board can't open.
+	sched, err := schedule.New(st, mgr)
+	if err == nil {
+		if err := sched.Start(); err != nil {
+			sched = nil
+		} else {
+			defer sched.Shutdown()
+		}
+	} else {
+		sched = nil
+	}
+
+	model := New(st, mcpSrv, mgr, sched)
 	p := tea.NewProgram(model)
 
 	// Bridge store change events → the program.
@@ -45,6 +60,6 @@ func Run(ctx context.Context, st *store.Store, mcpSrv *mcp.Server) error {
 		p.Quit()
 	}()
 
-	_, err := p.Run()
+	_, err = p.Run()
 	return err
 }

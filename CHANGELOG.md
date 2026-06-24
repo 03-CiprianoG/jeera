@@ -6,6 +6,28 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-06-24
+
+Scheduling: a ticket can now start itself on a cron. Set it once and walk away —
+Jeera runs the agent on time, even headless.
+
+### Added
+- **Schedule Start** (`internal/schedule`): from the ticket detail view, press `S`
+  and enter a cron spec (`0 9 * * *`) to have Jeera run the ticket on that
+  schedule. Schedules are persisted in the store and **re-registered on boot**, so
+  they survive restarts; `X` removes the most recent one. Each firing takes the
+  same path as a manual Start, so a scheduled run is just an automated one.
+- **gocron-backed scheduler**: a thin lifecycle layer over
+  `github.com/go-co-op/gocron/v2` — register/unregister jobs live, persist each
+  schedule's next-run time, and skip (and disable) any schedule whose spec no
+  longer parses rather than wedging startup. A 6-field spec is read as
+  second-resolution.
+- **Headless scheduling** (`jeera --headless`): the execution engine and scheduler
+  run without the TUI, so a quiet machine works its backlog on time. The headless
+  banner reports how many schedules are enabled.
+- **Schedules in the sidebar**: the ticket detail view lists a ticket's schedules
+  with their cron spec and next-run time.
+
 ## [0.3.0] - 2026-06-24
 
 The execution engine: a ticket isn't just something you track — press **Start**
@@ -93,7 +115,8 @@ server, both backed by one local store.
   (MCP only), `jeera --no-mcp` (board only), `jeera version`; XDG-aware paths
   (`internal/paths`) and build identity (`internal/version`).
 
-[Unreleased]: https://github.com/03-CiprianoG/jeera/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/03-CiprianoG/jeera/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/03-CiprianoG/jeera/releases/tag/v0.4.0
 [0.3.0]: https://github.com/03-CiprianoG/jeera/releases/tag/v0.3.0
 [0.2.0]: https://github.com/03-CiprianoG/jeera/releases/tag/v0.2.0
 [0.1.0]: https://github.com/03-CiprianoG/jeera/releases/tag/v0.1.0

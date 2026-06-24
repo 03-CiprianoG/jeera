@@ -1,9 +1,13 @@
 package tui
 
 import (
+	"path/filepath"
 	"testing"
 
 	"github.com/03-CiprianoG/jeera/internal/core"
+	"github.com/03-CiprianoG/jeera/internal/run"
+	"github.com/03-CiprianoG/jeera/internal/schedule"
+	"github.com/03-CiprianoG/jeera/internal/store"
 )
 
 func TestReloadGroupsIssuesByColumn(t *testing.T) {
@@ -142,6 +146,47 @@ func TestDeleteFlowViaKeys(t *testing.T) {
 	m = next.(Model)
 	if _, err := st.GetIssue(iss.ID); err == nil {
 		t.Error("issue should have been deleted")
+	}
+}
+
+// Deleting a scheduled issue must tear down its live cron job, not just its rows.
+func TestDeleteStopsSchedule(t *testing.T) {
+	st, err := store.Open(filepath.Join(t.TempDir(), "jeera.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	mgr := run.NewManager(st, t.TempDir(), func() string { return "" })
+	sched, err := schedule.New(st, mgr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = sched.Shutdown() })
+	if err := sched.Start(); err != nil {
+		t.Fatal(err)
+	}
+
+	m := New(st, nil, mgr, sched)
+	m.width, m.height = 100, 30
+	p := seedProject(t, st)
+	iss, _ := st.CreateIssue(core.Issue{ProjectID: p.ID, Title: "doomed but scheduled"})
+	sc, _ := sched.Add(iss.ID, "0 9 * * *", false)
+	m.reload()
+	m.colIdx, m.cardIdx = 0, 0
+	if sched.ActiveJobs() != 1 {
+		t.Fatalf("expected one live job before delete, got %d", sched.ActiveJobs())
+	}
+
+	next, _ := m.updateBoard(keyPress("x"))
+	m = next.(Model)
+	next, _ = m.updateConfirm(keyPress("y"))
+	m = next.(Model)
+
+	if sched.ActiveJobs() != 0 {
+		t.Errorf("deleting the issue should stop its cron job, %d remain", sched.ActiveJobs())
+	}
+	if _, err := st.GetSchedule(sc.ID); err == nil {
+		t.Error("schedule row should cascade-delete with the issue")
 	}
 }
 

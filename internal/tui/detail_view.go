@@ -90,6 +90,23 @@ func (d *detailModel) renderSidebar() string {
 			lines = append(lines, "  "+t.CardMeta.Render(fmt.Sprintf("v%d", r.Version))+" "+rs.Render(string(r.Status)))
 		}
 	}
+	if len(d.schedules) > 0 {
+		lines = append(lines, t.Label.Render("Schedules"))
+		for i, sc := range d.schedules {
+			if i >= 3 {
+				break
+			}
+			when := ""
+			if sc.NextRun != nil {
+				when = " → " + sc.NextRun.Local().Format("Jan 2 15:04")
+			}
+			spec := sc.CronSpec
+			if !sc.Enabled {
+				spec += " (off)"
+			}
+			lines = append(lines, "  "+t.Chip.Render("⏱ "+spec)+t.HelpDesc.Render(when))
+		}
+	}
 
 	body := lipgloss.JoinVertical(lipgloss.Left, lines...)
 	return lipgloss.NewStyle().Width(w).Render(fitHeight(body, d.bodyHeight()))
@@ -122,7 +139,7 @@ func (d *detailModel) renderFooter() string {
 	default:
 		segs := []struct{ k, v string }{
 			{"j/k", "field"}, {"h/l", "change"}, {"e", "describe"}, {"c", "comment"},
-			{"s", "start"}, {"w", "worktree"}, {"esc", "back"},
+			{"s", "start"}, {"S", "schedule"}, {"w", "worktree"}, {"esc", "back"},
 		}
 		parts := make([]string, 0, len(segs))
 		for _, s := range segs {
@@ -144,6 +161,8 @@ func (d *detailModel) inputLabel() string {
 		return "Points:"
 	case ikTag:
 		return "Add tag:"
+	case ikCron:
+		return "Schedule:"
 	default:
 		return "Comment:"
 	}

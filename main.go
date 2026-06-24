@@ -21,6 +21,8 @@ import (
 
 	"github.com/03-CiprianoG/jeera/internal/mcp"
 	"github.com/03-CiprianoG/jeera/internal/paths"
+	runpkg "github.com/03-CiprianoG/jeera/internal/run"
+	"github.com/03-CiprianoG/jeera/internal/schedule"
 	"github.com/03-CiprianoG/jeera/internal/store"
 	"github.com/03-CiprianoG/jeera/internal/tui"
 	"github.com/03-CiprianoG/jeera/internal/version"
@@ -99,11 +101,26 @@ func runHeadless(ctx context.Context, st *store.Store, out io.Writer) error {
 	status := srv.Status()
 	projects, _ := st.ListProjects()
 
+	// The execution engine and scheduler run headless too, so "Schedule Start"
+	// entries fire while the server is up — a quiet machine working its backlog.
+	mgr := runpkg.NewManager(st, paths.DataDir(), func() string { return srv.Status().URL })
+	defer mgr.Shutdown()
+	scheduled := 0
+	if sched, err := schedule.New(st, mgr); err == nil {
+		if err := sched.Start(); err == nil {
+			defer sched.Shutdown()
+			if active, _ := st.ListEnabledSchedules(); active != nil {
+				scheduled = len(active)
+			}
+		}
+	}
+
 	fmt.Fprintln(out, version.String())
-	fmt.Fprintf(out, "store:    %s\n", paths.DBPath())
-	fmt.Fprintf(out, "projects: %d\n", len(projects))
-	fmt.Fprintln(out, "mode:     MCP server only (--headless)")
-	fmt.Fprintf(out, "mcp:      %s\n", status.URL)
+	fmt.Fprintf(out, "store:     %s\n", paths.DBPath())
+	fmt.Fprintf(out, "projects:  %d\n", len(projects))
+	fmt.Fprintf(out, "schedules: %d enabled\n", scheduled)
+	fmt.Fprintln(out, "mode:      MCP server only (--headless)")
+	fmt.Fprintf(out, "mcp:       %s\n", status.URL)
 	fmt.Fprintln(out, "\nConnect an agent:")
 	fmt.Fprintf(out, "  claude mcp add --transport http jeera %s\n", status.URL)
 	fmt.Fprintln(out, "\nor add to .mcp.json:")

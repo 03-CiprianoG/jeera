@@ -62,8 +62,8 @@ Most tools bolt a chat box onto a GUI. Jeera inverts that. The agent isn't a fea
 | **Run versioning** | ✅ | Every Start is a new, recorded run version with its provider/model/effort, session and status |
 | **Per-ticket git worktrees** | ✅ | Each run is isolated on its own branch (default on, toggle off with `w`) |
 | **Model + effort picker** | ✅ | Choose the provider, model and reasoning effort per ticket from the detail view |
+| **Schedule Start** | ✅ | Press `S` and enter a cron spec; Jeera runs the ticket on time, persisted across restarts and headless |
 | **Start with children** | 🔜 | Resolve sub-issues in dependency order, then the parent |
-| **Schedule Start** | 🔜 | Cron a ticket to run while your machine is on |
 | **Expand / Discuss** | 🔜 | Drop into an interactive agent session pre-loaded with the ticket |
 | **Settings & defaults** | 🔜 | Global → per-project → per-ticket configuration cascade |
 
@@ -160,8 +160,8 @@ Released under semantic versioning; each milestone is one or more pull requests.
 - [x] **MCP server** — 15 typed tools over the shared store
 - [x] **v0.1.0** — design system + Kanban board (first runnable release)
 - [x] **v0.2.0** — ticket detail view: rich-text editing + all Jira fields + comments
-- [x] **v0.3.0** — execution engine: Start / worktrees / runs / versioning *(you are here)*
-- [ ] **v0.4.0** — scheduling (Schedule Start)
+- [x] **v0.3.0** — execution engine: Start / worktrees / runs / versioning
+- [x] **v0.4.0** — scheduling: cron a ticket to run itself, persisted and headless *(you are here)*
 - [ ] **v0.5.0** — settings, config cascade, project management
 - [ ] **v1.0.0** — feature-complete, cross-platform release binaries
 

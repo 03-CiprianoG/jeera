@@ -6,6 +6,23 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-24
+
+Feature-complete and stable. Jeera is the human's board and the agents' MCP
+server in one local-first binary, and a ticket is something you can run, schedule,
+discuss, and attach to — backed by a settings cascade and per-run git worktrees.
+
+### Added
+- **Release engineering**: a GoReleaser pipeline builds cross-platform static
+  binaries (linux/darwin/windows × amd64/arm64, CGO-free) with the version, commit
+  and date stamped in, and a tag-triggered release workflow attaches them — with
+  checksums — to the GitHub release. `go install github.com/03-CiprianoG/jeera@latest`
+  is supported.
+
+### Changed
+- Documentation finalized: install via pre-built binary, `go install`, or source; a
+  configuration reference; and the feature matrix marked complete.
+
 ## [0.7.0] - 2026-06-24
 
 Attachments: pin links and files to a ticket and open them in a keystroke.
@@ -182,7 +199,8 @@ server, both backed by one local store.
   (MCP only), `jeera --no-mcp` (board only), `jeera version`; XDG-aware paths
   (`internal/paths`) and build identity (`internal/version`).
 
-[Unreleased]: https://github.com/03-CiprianoG/jeera/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/03-CiprianoG/jeera/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/03-CiprianoG/jeera/releases/tag/v1.0.0
 [0.7.0]: https://github.com/03-CiprianoG/jeera/releases/tag/v0.7.0
 [0.6.0]: https://github.com/03-CiprianoG/jeera/releases/tag/v0.6.0
 [0.5.0]: https://github.com/03-CiprianoG/jeera/releases/tag/v0.5.0

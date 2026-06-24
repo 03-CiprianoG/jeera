@@ -1,0 +1,61 @@
+# GoReleaser configuration — cross-platform static binaries for Jeera.
+# Validate locally with `goreleaser check`; a tag push runs it in CI.
+version: 2
+
+project_name: jeera
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: jeera
+    main: .
+    binary: jeera
+    env:
+      - CGO_ENABLED=0 # pure-Go (modernc sqlite) keeps the binary static
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X github.com/03-CiprianoG/jeera/internal/version.Version={{ .Version }}
+      - -X github.com/03-CiprianoG/jeera/internal/version.Commit={{ .ShortCommit }}
+      - -X github.com/03-CiprianoG/jeera/internal/version.Date={{ .Date }}
+
+archives:
+  - id: jeera
+    formats:
+      - tar.gz
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - README.md
+      - LICENSE
+      - CHANGELOG.md
+
+checksum:
+  name_template: checksums.txt
+
+changelog:
+  use: github
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+
+release:
+  draft: false
+  prerelease: auto
+  name_template: "v{{ .Version }}"

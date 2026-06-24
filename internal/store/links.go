@@ -1,25 +1,37 @@
 package store
 
 import (
+	"database/sql"
+	"errors"
+	"fmt"
+
 	"github.com/03-CiprianoG/jeera/internal/core"
 )
 
 // CreateLink records a directional relationship between two issues. The two
-// issues must belong to the same project; duplicates (same source, target and
-// type) are ignored.
+// issues belong to the same project (derived from the source when omitted);
+// duplicates (same source, target and type) are idempotent no-ops that return
+// the existing edge.
 func (s *Store) CreateLink(l core.IssueLink) (core.IssueLink, error) {
-	if l.ProjectID == 0 {
-		// Derive the project from the source issue when the caller omits it.
-		var projectID int64
-		if err := s.db.QueryRow(`SELECT project_id FROM issues WHERE id = ?`, l.SourceID).Scan(&projectID); err == nil {
-			l.ProjectID = projectID
+	s.writeMu.Lock()
+	defer s.writeMu.Unlock()
+
+	// Derive the project from the source issue when the caller omits it, and
+	// surface a clear not-found rather than a misleading validation error.
+	if l.ProjectID == 0 && l.SourceID != 0 {
+		pid, err := projectOfIssue(s.db, l.SourceID)
+		if err != nil {
+			if errors.Is(err, ErrNotFound) {
+				return core.IssueLink{}, fmt.Errorf("%w: source issue %d does not exist", core.ErrInvalid, l.SourceID)
+			}
+			return core.IssueLink{}, err
 		}
+		l.ProjectID = pid
 	}
 	if err := l.Validate(); err != nil {
 		return core.IssueLink{}, err
 	}
-	s.writeMu.Lock()
-	defer s.writeMu.Unlock()
+
 	res, err := s.db.Exec(
 		`INSERT OR IGNORE INTO issue_links (project_id, source_id, target_id, type) VALUES (?, ?, ?, ?)`,
 		l.ProjectID, l.SourceID, l.TargetID, string(l.Type),
@@ -27,10 +39,24 @@ func (s *Store) CreateLink(l core.IssueLink) (core.IssueLink, error) {
 	if err != nil {
 		return core.IssueLink{}, err
 	}
-	if l.ID, err = res.LastInsertId(); err != nil {
+	// INSERT OR IGNORE does not update last_insert_rowid on a conflict, so when
+	// the edge already existed (0 rows affected) re-select its id instead of
+	// trusting LastInsertId, which would return a stale rowid from a prior write.
+	if n, _ := res.RowsAffected(); n == 0 {
+		if err := s.db.QueryRow(
+			`SELECT id FROM issue_links WHERE source_id = ? AND target_id = ? AND type = ?`,
+			l.SourceID, l.TargetID, string(l.Type),
+		).Scan(&l.ID); err != nil {
+			return core.IssueLink{}, err
+		}
+	} else if l.ID, err = res.LastInsertId(); err != nil {
 		return core.IssueLink{}, err
 	}
+
+	// Both endpoints' detail views change (one side shows the inverse), so
+	// notify both issues.
 	s.publish(core.Event{Type: core.EventIssueUpdated, ProjectID: l.ProjectID, IssueID: l.SourceID})
+	s.publish(core.Event{Type: core.EventIssueUpdated, ProjectID: l.ProjectID, IssueID: l.TargetID})
 	return l, nil
 }
 
@@ -81,6 +107,11 @@ func (s *Store) ListLinks(issueID int64) ([]LinkedIssue, error) {
 		}
 		other, err := s.GetIssue(otherID)
 		if err != nil {
+			// The linked issue was concurrently deleted between reading the
+			// edges and fetching it; skip it rather than failing the whole call.
+			if errors.Is(err, ErrNotFound) {
+				continue
+			}
 			return nil, err
 		}
 		out = append(out, LinkedIssue{LinkID: e.linkID, Type: typ, Issue: other})
@@ -88,16 +119,26 @@ func (s *Store) ListLinks(issueID int64) ([]LinkedIssue, error) {
 	return out, nil
 }
 
-// DeleteLink removes a relationship edge by its ID.
+// DeleteLink removes a relationship edge by its ID and notifies both endpoints
+// so either issue's detail view refreshes.
 func (s *Store) DeleteLink(linkID int64) error {
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
-	res, err := s.db.Exec(`DELETE FROM issue_links WHERE id = ?`, linkID)
+
+	var projectID, sourceID, targetID int64
+	err := s.db.QueryRow(
+		`SELECT project_id, source_id, target_id FROM issue_links WHERE id = ?`, linkID,
+	).Scan(&projectID, &sourceID, &targetID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrNotFound
+	}
 	if err != nil {
 		return err
 	}
-	if n, _ := res.RowsAffected(); n == 0 {
-		return ErrNotFound
+	if _, err := s.db.Exec(`DELETE FROM issue_links WHERE id = ?`, linkID); err != nil {
+		return err
 	}
+	s.publish(core.Event{Type: core.EventIssueUpdated, ProjectID: projectID, IssueID: sourceID})
+	s.publish(core.Event{Type: core.EventIssueUpdated, ProjectID: projectID, IssueID: targetID})
 	return nil
 }

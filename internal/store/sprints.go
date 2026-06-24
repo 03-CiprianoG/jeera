@@ -113,6 +113,13 @@ func (s *Store) AddIssueToSprint(issueID int64, sprintID *int64) error {
 		}
 		return err
 	}
+	// A sprint and the issue assigned to it must belong to the same project.
+	if sprintID != nil {
+		sp, err := projectOfSprint(s.db, *sprintID)
+		if e := requireSameProject(projectID, sp, err, "sprint", *sprintID); e != nil {
+			return e
+		}
+	}
 	if _, err := s.db.Exec(
 		`UPDATE issues SET sprint_id = ?, updated_at = ? WHERE id = ?`,
 		ptrInt64ToNull(sprintID), fmtTime(s.now()), issueID,

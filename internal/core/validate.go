@@ -115,14 +115,14 @@ func (s Sprint) Validate() error {
 
 // Validate checks an issue link.
 func (l IssueLink) Validate() error {
-	if l.ProjectID == 0 {
-		return invalidf("link must belong to a project")
-	}
 	if l.SourceID == 0 || l.TargetID == 0 {
 		return invalidf("link needs both a source and a target issue")
 	}
 	if l.SourceID == l.TargetID {
 		return invalidf("an issue cannot be linked to itself")
+	}
+	if l.ProjectID == 0 {
+		return invalidf("link must belong to a project")
 	}
 	if !l.Type.Valid() {
 		return invalidf("unknown link type %q", l.Type)

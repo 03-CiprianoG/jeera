@@ -1,8 +1,6 @@
 package store
 
 import (
-	"database/sql"
-	"errors"
 	"fmt"
 	"strings"
 
@@ -97,10 +95,12 @@ func (s *Store) ListIssueTags(issueID int64) ([]core.Tag, error) {
 }
 
 // publishIssue looks up an issue's project and emits the given event. It assumes
-// the caller already holds writeMu.
+// the caller already holds writeMu. If the issue cannot be resolved (e.g. an
+// operation on a non-existent id), it publishes nothing rather than emitting a
+// misleading ProjectID=0 event.
 func (s *Store) publishIssue(issueID int64, typ core.EventType) {
 	var projectID int64
-	if err := s.db.QueryRow(`SELECT project_id FROM issues WHERE id = ?`, issueID).Scan(&projectID); err != nil && !errors.Is(err, sql.ErrNoRows) {
+	if err := s.db.QueryRow(`SELECT project_id FROM issues WHERE id = ?`, issueID).Scan(&projectID); err != nil {
 		return
 	}
 	s.publish(core.Event{Type: typ, ProjectID: projectID, IssueID: issueID})

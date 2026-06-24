@@ -3,11 +3,19 @@ package store
 import (
 	"database/sql"
 	"errors"
+	"strings"
 	"time"
 )
 
 // ErrNotFound is returned by Get* methods when no row matches.
 var ErrNotFound = errors.New("store: not found")
+
+// likeEscaper escapes the SQLite LIKE metacharacters using '\' as the escape
+// character, so caller-supplied search text is matched literally. It must be
+// paired with an `ESCAPE '\'` clause in the query.
+var likeEscaper = strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`)
+
+func escapeLike(s string) string { return likeEscaper.Replace(s) }
 
 // timeFormat is the canonical text encoding for every timestamp column.
 const timeFormat = time.RFC3339Nano

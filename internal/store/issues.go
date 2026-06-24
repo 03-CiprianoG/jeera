@@ -103,6 +103,11 @@ func (s *Store) CreateIssue(iss core.Issue) (core.Issue, error) {
 	if err := iss.Validate(); err != nil {
 		return core.Issue{}, err
 	}
+	// Enforce that status/epic/parent/sprint all belong to this project. Run it
+	// inside the tx so the check and the insert see one consistent snapshot.
+	if err := validateIssueRefs(tx, iss); err != nil {
+		return core.Issue{}, err
+	}
 
 	// Allocate the sequence number atomically within the transaction.
 	if _, err := tx.Exec(`UPDATE projects SET seq_counter = seq_counter + 1 WHERE id = ?`, iss.ProjectID); err != nil {
@@ -219,8 +224,10 @@ func (s *Store) ListIssues(f IssueFilter) ([]core.Issue, error) {
 		args = append(args, *f.ParentID)
 	}
 	if t := strings.TrimSpace(f.Text); t != "" {
-		where = append(where, "(i.title LIKE ? OR i.description LIKE ?)")
-		like := "%" + t + "%"
+		// Escape LIKE metacharacters so a search term containing % or _ (common
+		// in identifiers like "feature_flag") matches literally, not as a wildcard.
+		where = append(where, `(i.title LIKE ? ESCAPE '\' OR i.description LIKE ? ESCAPE '\')`)
+		like := "%" + escapeLike(t) + "%"
 		args = append(args, like, like)
 	}
 
@@ -264,6 +271,11 @@ func (s *Store) UpdateIssue(iss core.Issue) error {
 	}
 	s.writeMu.Lock()
 	defer s.writeMu.Unlock()
+	// Same cross-project integrity guard as CreateIssue: a status/epic/parent/
+	// sprint from another project must never be persisted onto this issue.
+	if err := validateIssueRefs(s.db, iss); err != nil {
+		return err
+	}
 	iss.UpdatedAt = s.now()
 	res, err := s.db.Exec(
 		`UPDATE issues SET type = ?, title = ?, description = ?, status_id = ?, priority = ?,

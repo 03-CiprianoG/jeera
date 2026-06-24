@@ -32,6 +32,18 @@ func projectOfIssue(q rowQuerier, issueID int64) (int64, error) {
 	return pid, err
 }
 
+func issueProjectAndType(q rowQuerier, issueID int64) (int64, core.IssueType, error) {
+	var (
+		pid int64
+		typ string
+	)
+	err := q.QueryRow(`SELECT project_id, type FROM issues WHERE id = ?`, issueID).Scan(&pid, &typ)
+	if errors.Is(err, sql.ErrNoRows) {
+		return 0, "", ErrNotFound
+	}
+	return pid, core.IssueType(typ), err
+}
+
 func projectOfSprint(q rowQuerier, sprintID int64) (int64, error) {
 	var pid int64
 	err := q.QueryRow(`SELECT project_id FROM sprints WHERE id = ?`, sprintID).Scan(&pid)
@@ -67,9 +79,12 @@ func validateIssueRefs(q rowQuerier, iss core.Issue) error {
 		return e
 	}
 	if iss.EpicID != nil {
-		ep, err := projectOfIssue(q, *iss.EpicID)
+		ep, typ, err := issueProjectAndType(q, *iss.EpicID)
 		if e := requireSameProject(iss.ProjectID, ep, err, "epic", *iss.EpicID); e != nil {
 			return e
+		}
+		if typ != core.TypeEpic {
+			return fmt.Errorf("%w: issue %d is not an epic", core.ErrInvalid, *iss.EpicID)
 		}
 	}
 	if iss.ParentID != nil {

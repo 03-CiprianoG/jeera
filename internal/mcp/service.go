@@ -124,10 +124,16 @@ func (svc *Service) issueDTO(iss core.Issue) (IssueDTO, error) {
 		CreatedAt:   formatTime(iss.CreatedAt),
 		UpdatedAt:   formatTime(iss.UpdatedAt),
 	}
-	if st, err := svc.store.GetStatus(iss.StatusID); err == nil {
-		dto.Status = st.Name
-		dto.StatusCategory = string(st.Category)
+	// Status is mandatory and FK-guaranteed; a failure here is a real error
+	// (e.g. a transient DB error), not an absent field, so surface it rather
+	// than returning a DTO that looks like it has no column.
+	st, err := svc.store.GetStatus(iss.StatusID)
+	if err != nil {
+		return IssueDTO{}, fmt.Errorf("resolve status of %s: %w", iss.Key, err)
 	}
+	dto.Status = st.Name
+	dto.StatusCategory = string(st.Category)
+
 	if !iss.Assignee.IsZero() {
 		dto.Assignee = &AssigneeDTO{
 			Provider: string(iss.Assignee.Provider),
@@ -135,15 +141,21 @@ func (svc *Service) issueDTO(iss core.Issue) (IssueDTO, error) {
 			Effort:   string(iss.Assignee.Effort),
 		}
 	}
+	// epic_id and sprint_id are nullable but FK-guaranteed when set (ON DELETE
+	// SET NULL), so a non-nil pointer must resolve; propagate any error.
 	if iss.EpicID != nil {
-		if epic, err := svc.store.GetIssue(*iss.EpicID); err == nil {
-			dto.EpicKey = epic.Key
+		epic, err := svc.store.GetIssue(*iss.EpicID)
+		if err != nil {
+			return IssueDTO{}, fmt.Errorf("resolve epic of %s: %w", iss.Key, err)
 		}
+		dto.EpicKey = epic.Key
 	}
 	if iss.SprintID != nil {
-		if sp, err := svc.store.GetSprint(*iss.SprintID); err == nil {
-			dto.Sprint = sp.Name
+		sp, err := svc.store.GetSprint(*iss.SprintID)
+		if err != nil {
+			return IssueDTO{}, fmt.Errorf("resolve sprint of %s: %w", iss.Key, err)
 		}
+		dto.Sprint = sp.Name
 	}
 	tags, err := svc.store.ListIssueTags(iss.ID)
 	if err != nil {

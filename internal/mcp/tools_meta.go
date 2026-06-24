@@ -184,14 +184,36 @@ func (svc *Service) tagIssue(_ context.Context, _ *mcpsdk.CallToolRequest, args 
 }
 
 func (svc *Service) findOrCreateTag(projectID int64, name string) (core.Tag, error) {
+	if t, ok, err := svc.lookupTag(projectID, name); err != nil {
+		return core.Tag{}, err
+	} else if ok {
+		return t, nil
+	}
+	tag, err := svc.store.CreateTag(core.Tag{ProjectID: projectID, Name: name})
+	if err != nil {
+		// A concurrent caller (another agent, or the TUI) may have created the
+		// same tag between our lookup and insert, tripping the UNIQUE
+		// constraint. Re-check before surfacing the error so the idempotent
+		// "ensure tag" semantics hold and the agent does not see a spurious
+		// failure for an issue that simply needs tagging.
+		if t, ok, lerr := svc.lookupTag(projectID, name); lerr == nil && ok {
+			return t, nil
+		}
+		return core.Tag{}, err
+	}
+	return tag, nil
+}
+
+// lookupTag finds a project tag by case-insensitive name.
+func (svc *Service) lookupTag(projectID int64, name string) (core.Tag, bool, error) {
 	tags, err := svc.store.ListTags(projectID)
 	if err != nil {
-		return core.Tag{}, err
+		return core.Tag{}, false, err
 	}
 	for _, t := range tags {
 		if strings.EqualFold(t.Name, name) {
-			return t, nil
+			return t, true, nil
 		}
 	}
-	return svc.store.CreateTag(core.Tag{ProjectID: projectID, Name: name})
+	return core.Tag{}, false, nil
 }

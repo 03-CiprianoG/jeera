@@ -143,6 +143,9 @@ func (svc *Service) createIssue(_ context.Context, _ *mcpsdk.CallToolRequest, ar
 		if err != nil {
 			return nil, IssueDTO{}, err
 		}
+		if epic.Type != core.TypeEpic {
+			return nil, IssueDTO{}, fmt.Errorf("issue %q is not an epic", args.Epic)
+		}
 		iss.EpicID = &epic.ID
 	}
 	if args.Sprint != "" {

@@ -22,6 +22,7 @@ import (
 	"github.com/03-CiprianoG/jeera/internal/mcp"
 	"github.com/03-CiprianoG/jeera/internal/paths"
 	"github.com/03-CiprianoG/jeera/internal/store"
+	"github.com/03-CiprianoG/jeera/internal/tui"
 	"github.com/03-CiprianoG/jeera/internal/version"
 )
 
@@ -59,51 +60,54 @@ func main() {
 	}
 }
 
-// run opens the shared store, starts the embedded MCP server (unless --no-mcp)
-// and blocks serving it until the context is cancelled. The TUI is wired in over
-// the next releases; for now the root and --headless modes both serve MCP.
+// run opens the shared store and dispatches to the requested mode: the board
+// (with an embedded MCP server unless --no-mcp), or MCP-only with --headless.
 func run(ctx context.Context, headless, noMCP bool, out io.Writer) error {
-	dbPath := paths.DBPath()
-	st, err := store.Open(dbPath)
+	st, err := store.Open(paths.DBPath())
 	if err != nil {
 		return err
 	}
 	defer st.Close()
 
-	projects, err := st.ListProjects()
-	if err != nil {
-		return err
+	if headless {
+		return runHeadless(ctx, st, out)
 	}
 
-	fmt.Fprintln(out, version.String())
-	fmt.Fprintf(out, "store:    %s\n", dbPath)
-	fmt.Fprintf(out, "projects: %d\n", len(projects))
-
-	if noMCP {
-		fmt.Fprintln(out, "mode:     TUI only (--no-mcp)")
-		fmt.Fprintln(out, "\nThe interactive board arrives in the next release.")
-		return nil
+	// Board mode: start the MCP server alongside the TUI unless asked not to.
+	var srv *mcp.Server
+	if !noMCP {
+		srv = mcp.NewServer(mcp.NewService(st))
+		if err := srv.Start("127.0.0.1", mcpPort()); err != nil {
+			return fmt.Errorf("start MCP server: %w", err)
+		}
+		defer func() {
+			shutCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = srv.Shutdown(shutCtx)
+		}()
 	}
+	return tui.Run(ctx, st, srv)
+}
 
+// runHeadless serves only the MCP server, printing connection details and
+// blocking until the context is cancelled.
+func runHeadless(ctx context.Context, st *store.Store, out io.Writer) error {
 	srv := mcp.NewServer(mcp.NewService(st))
 	if err := srv.Start("127.0.0.1", mcpPort()); err != nil {
 		return fmt.Errorf("start MCP server: %w", err)
 	}
 	status := srv.Status()
+	projects, _ := st.ListProjects()
 
-	mode := "TUI + MCP server"
-	if headless {
-		mode = "MCP server only (--headless)"
-	}
-	fmt.Fprintf(out, "mode:     %s\n", mode)
+	fmt.Fprintln(out, version.String())
+	fmt.Fprintf(out, "store:    %s\n", paths.DBPath())
+	fmt.Fprintf(out, "projects: %d\n", len(projects))
+	fmt.Fprintln(out, "mode:     MCP server only (--headless)")
 	fmt.Fprintf(out, "mcp:      %s\n", status.URL)
 	fmt.Fprintln(out, "\nConnect an agent:")
 	fmt.Fprintf(out, "  claude mcp add --transport http jeera %s\n", status.URL)
 	fmt.Fprintln(out, "\nor add to .mcp.json:")
 	fmt.Fprintln(out, srv.ClientConfigJSON())
-	if !headless {
-		fmt.Fprintln(out, "\nThe interactive board arrives in the next release.")
-	}
 	fmt.Fprintln(out, "\nServing MCP until interrupted (Ctrl-C).")
 
 	<-ctx.Done()

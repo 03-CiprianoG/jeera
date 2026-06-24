@@ -49,7 +49,7 @@ Most tools bolt a chat box onto a GUI. Jeera inverts that. The agent isn't a fea
 | **Model assignees** | ✅ | Work is assigned to a *model* — provider + model + reasoning effort |
 | **Comments & activity** | ✅ | Humans and agent runs both post to the timeline |
 | **Attachments** | 🔜 | Files referenced by path; capability-gated inline image preview |
-| **Kanban board** (keyboard-first) | 🔭 | vim-style navigation, move cards across columns |
+| **Kanban board** (keyboard-first) | ✅ | vim-style navigation, create/rename/delete, move cards across columns, live refresh |
 | **Backlog · Sprints · Epics · Ticket detail** views | 🔭 | Rich Markdown editor with live preview |
 
 ### Jeera superpowers
@@ -133,7 +133,9 @@ claude mcp add --transport http jeera http://127.0.0.1:7777
 
 ## Screenshots
 
-> 📸 Coming with **v0.1.0** (the first interactive board). This section will showcase the Kanban board, the ticket detail editor, the live Runs view, and the MCP status panel.
+![The Jeera kanban board](docs/board.png)
+
+*The board: status columns, model-assignee cards, and the always-on **MCP wire** (top-right) showing the live endpoint an agent can connect to. The ticket detail editor, live Runs view and richer screens land in the next releases.*
 
 ## Stack
 
@@ -154,8 +156,8 @@ Chosen deliberately, not by default — every external API verified against curr
 Released under semantic versioning; each milestone is one or more pull requests.
 
 - [x] **Foundation** — domain model + local SQLite store
-- [x] **MCP server** — 15 typed tools over the shared store *(you are here)*
-- [ ] **v0.1.0** — design system + Kanban board (first runnable release)
+- [x] **MCP server** — 15 typed tools over the shared store
+- [x] **v0.1.0** — design system + Kanban board (first runnable release) *(you are here)*
 - [ ] **v0.2.0** — ticket detail, rich text, sprints, epics, relationships, attachments
 - [ ] **v0.3.0** — execution engine (Start / worktrees / runs / versioning)
 - [ ] **v0.4.0** — scheduling (Schedule Start)

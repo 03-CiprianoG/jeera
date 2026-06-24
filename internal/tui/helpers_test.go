@@ -1,0 +1,80 @@
+package tui
+
+import (
+	"flag"
+	"os"
+	"path/filepath"
+	"regexp"
+	"strings"
+	"testing"
+
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/03-CiprianoG/jeera/internal/core"
+	"github.com/03-CiprianoG/jeera/internal/store"
+)
+
+var updateGolden = flag.Bool("update", false, "update golden files")
+
+// newTestModel builds a model over a fresh store, sized to a fixed 100x30 so
+// renders are deterministic.
+func newTestModel(t *testing.T) (Model, *store.Store) {
+	t.Helper()
+	st, err := store.Open(filepath.Join(t.TempDir(), "jeera.db"))
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+	m := New(st, nil)
+	m.width, m.height = 100, 30
+	return m, st
+}
+
+func seedProject(t *testing.T, st *store.Store) core.Project {
+	t.Helper()
+	p, err := st.CreateProject(core.Project{Name: "Jeera", KeyPrefix: "JEE", RepoPath: "/tmp/jeera"})
+	if err != nil {
+		t.Fatalf("CreateProject: %v", err)
+	}
+	return p
+}
+
+// keyPress builds a KeyPressMsg for a single character (the char-key aliases the
+// keymap accepts cover navigation and all single-letter actions).
+func keyPress(s string) tea.KeyPressMsg {
+	return tea.KeyPressMsg{Code: []rune(s)[0], Text: s}
+}
+
+var ansiRE = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
+
+// render returns the model's current view content with ANSI styling stripped,
+// so golden comparisons assert on layout and text rather than environment-
+// dependent color codes.
+func render(m Model) string {
+	return strings.TrimRight(stripANSI(m.View().Content), "\n ")
+}
+
+func stripANSI(s string) string { return ansiRE.ReplaceAllString(s, "") }
+
+// goldenFile compares got against testdata/<name>.golden (or rewrites it with
+// -update).
+func goldenFile(t *testing.T, name, got string) {
+	t.Helper()
+	path := filepath.Join("testdata", name+".golden")
+	if *updateGolden {
+		if err := os.MkdirAll("testdata", 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(got), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
+	want, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read golden %s (run: go test ./internal/tui -update): %v", path, err)
+	}
+	if got != string(want) {
+		t.Errorf("golden mismatch for %s\n--- got ---\n%s\n--- want ---\n%s", name, got, string(want))
+	}
+}

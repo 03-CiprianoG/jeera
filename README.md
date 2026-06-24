@@ -50,7 +50,8 @@ Most tools bolt a chat box onto a GUI. Jeera inverts that. The agent isn't a fea
 | **Comments & activity** | ✅ | Humans and agent runs both post to the timeline |
 | **Attachments** | 🔜 | Files referenced by path; capability-gated inline image preview |
 | **Kanban board** (keyboard-first) | ✅ | vim-style navigation, create/rename/delete, move cards across columns, live refresh |
-| **Backlog · Sprints · Epics · Ticket detail** views | 🔭 | Rich Markdown editor with live preview |
+| **Ticket detail** view | ✅ | Markdown edit/preview, in-place editing of status/type/priority/points/assignee/sprint/epic/tags, comments |
+| **Backlog · Sprints · Epics** views | 🔭 | Dedicated management screens (assignment already works from the ticket) |
 
 ### Jeera superpowers
 
@@ -157,8 +158,8 @@ Released under semantic versioning; each milestone is one or more pull requests.
 
 - [x] **Foundation** — domain model + local SQLite store
 - [x] **MCP server** — 15 typed tools over the shared store
-- [x] **v0.1.0** — design system + Kanban board (first runnable release) *(you are here)*
-- [ ] **v0.2.0** — ticket detail, rich text, sprints, epics, relationships, attachments
+- [x] **v0.1.0** — design system + Kanban board (first runnable release)
+- [x] **v0.2.0** — ticket detail view: rich-text editing + all Jira fields + comments *(you are here)*
 - [ ] **v0.3.0** — execution engine (Start / worktrees / runs / versioning)
 - [ ] **v0.4.0** — scheduling (Schedule Start)
 - [ ] **v0.5.0** — settings, config cascade, project management

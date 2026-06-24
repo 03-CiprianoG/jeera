@@ -173,8 +173,9 @@ func (m Model) updateBoard(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.MoveLeft):
 		return m.moveSelected(-1)
 	case key.Matches(msg, m.keys.Enter):
-		if _, ok := m.selectedIssue(); ok {
-			return m, toast("ticket detail arrives in v0.2.0")
+		if iss, ok := m.selectedIssue(); ok {
+			m.detail = newDetail(m.store, m.theme, iss.ID, m.width, m.height)
+			m.mode = modeDetail
 		}
 	}
 	return m, nil

@@ -87,6 +87,7 @@ type detailModel struct {
 
 	width, height int
 	err           string
+	notice        string // transient confirmation (e.g. a launched/copied session), shown until the next key
 }
 
 func newDetail(st *store.Store, mgr *run.Manager, sched *schedule.Scheduler, th theme.Theme, issueID int64, w, h int) *detailModel {
@@ -182,6 +183,7 @@ func (d *detailModel) updateViewing(msg tea.Msg) (tea.Cmd, bool) {
 		d.vp, cmd = d.vp.Update(msg)
 		return cmd, false
 	}
+	d.notice = "" // a fresh keypress clears any transient confirmation
 	switch key.String() {
 	case "esc", "q":
 		return nil, true
@@ -284,8 +286,11 @@ func (d *detailModel) startWithChildren() {
 	d.reload()
 }
 
-// discuss returns a command that suspends the TUI and drops into an interactive
-// agent session preloaded with this ticket. On exit the TUI resumes.
+// discuss opens an interactive agent session preloaded with this ticket in a new
+// terminal (a multiplexer window or a GUI terminal) — never inline, so the board
+// stays live. When no terminal can be reached it copies the command to the
+// clipboard for the user to run themselves. The agent reflects any ticket
+// changes back over MCP, which refresh the board live.
 func (d *detailModel) discuss() tea.Cmd {
 	if d.runMgr == nil {
 		d.err = "run manager unavailable"
@@ -296,10 +301,16 @@ func (d *detailModel) discuss() tea.Cmd {
 		d.err = err.Error()
 		return nil
 	}
-	d.err = ""
-	return tea.ExecProcess(cmd, func(err error) tea.Msg {
-		return discussFinishedMsg{err: err}
-	})
+	out := launchInTerminalOrCopy(cmd, "discussing "+d.issue.Key)
+	if out.Err != nil {
+		d.err = out.Err.Error()
+		return nil
+	}
+	d.err, d.notice = "", out.Msg
+	if out.Copy != "" {
+		return tea.SetClipboard(out.Copy)
+	}
+	return nil
 }
 
 // toggleWorktree flips whether this ticket's runs execute in an isolated git

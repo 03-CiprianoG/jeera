@@ -124,6 +124,7 @@ func (m Model) updateBoard(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.mode = modeMCP
 	case key.Matches(msg, m.keys.Runs):
 		m.recentRuns, _ = m.store.ListRecentRuns(50)
+		m.runsCursor = 0
 		m.mode = modeRuns
 	case key.Matches(msg, m.keys.Settings):
 		m.settings = newSettings(m.cfg, m.theme, m.width, m.height)

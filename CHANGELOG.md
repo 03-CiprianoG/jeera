@@ -6,6 +6,29 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-06-24
+
+Attachments: pin links and files to a ticket and open them in a keystroke.
+
+### Added
+- **Attachments** (`internal/core`, `internal/store`): attach a URL or a file path
+  to a ticket. Jeera stores the reference and metadata (filename, MIME, size) —
+  never the binary — so the store stays small and the body diffable. A reference is
+  classified as a link or a file automatically; file paths are absolutized so they
+  open from anywhere.
+- **In the ticket detail view**: `A` adds an attachment (URL or path), the sidebar
+  lists them (🔗 links, 📎 files), and `o` opens the most recent one in your default
+  app or browser (`xdg-open` / `open` / `start`).
+- **`add_attachment` MCP tool**: agents can attach links and files to the ticket
+  they're working — the 16th typed tool.
+
+### Security
+- The external "open" path validates a reference before handing it to the OS: only
+  http/https URLs and existing regular local files are opened, so an agent-supplied
+  attachment can't dispatch a `file://` / `javascript:` / `smb://` scheme or a UNC
+  path. On Windows the opener uses `rundll32` rather than `cmd /c start`, so a ref is
+  never re-parsed by a shell.
+
 ## [0.6.0] - 2026-06-24
 
 Two more ways to put an agent to work on a ticket: talk it through, or run a
@@ -159,7 +182,8 @@ server, both backed by one local store.
   (MCP only), `jeera --no-mcp` (board only), `jeera version`; XDG-aware paths
   (`internal/paths`) and build identity (`internal/version`).
 
-[Unreleased]: https://github.com/03-CiprianoG/jeera/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/03-CiprianoG/jeera/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/03-CiprianoG/jeera/releases/tag/v0.7.0
 [0.6.0]: https://github.com/03-CiprianoG/jeera/releases/tag/v0.6.0
 [0.5.0]: https://github.com/03-CiprianoG/jeera/releases/tag/v0.5.0
 [0.4.0]: https://github.com/03-CiprianoG/jeera/releases/tag/v0.4.0

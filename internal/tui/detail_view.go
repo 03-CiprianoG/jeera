@@ -107,6 +107,20 @@ func (d *detailModel) renderSidebar() string {
 			lines = append(lines, "  "+t.Chip.Render("⏱ "+spec)+t.HelpDesc.Render(when))
 		}
 	}
+	if len(d.attachments) > 0 {
+		lines = append(lines, t.Label.Render("Attachments"))
+		for i, a := range d.attachments {
+			if i >= 4 {
+				lines = append(lines, "  "+t.HelpDesc.Render(fmt.Sprintf("+%d more", len(d.attachments)-4)))
+				break
+			}
+			icon := "📎"
+			if a.IsURL() {
+				icon = "🔗"
+			}
+			lines = append(lines, "  "+t.CardMeta.Render(icon+" ")+t.StatusText.Render(truncate(a.Filename, w-6)))
+		}
+	}
 
 	body := lipgloss.JoinVertical(lipgloss.Left, lines...)
 	return lipgloss.NewStyle().Width(w).Render(fitHeight(body, d.bodyHeight()))
@@ -139,7 +153,7 @@ func (d *detailModel) renderFooter() string {
 	default:
 		segs := []struct{ k, v string }{
 			{"j/k", "field"}, {"h/l", "change"}, {"e", "describe"}, {"c", "comment"},
-			{"s", "start"}, {"D", "+children"}, {"d", "discuss"}, {"S", "schedule"}, {"w", "worktree"}, {"esc", "back"},
+			{"s", "start"}, {"D", "+children"}, {"d", "discuss"}, {"A", "attach"}, {"o", "open"}, {"S", "schedule"}, {"w", "worktree"}, {"esc", "back"},
 		}
 		parts := make([]string, 0, len(segs))
 		for _, s := range segs {
@@ -163,6 +177,8 @@ func (d *detailModel) inputLabel() string {
 		return "Add tag:"
 	case ikCron:
 		return "Schedule:"
+	case ikAttach:
+		return "Attach:"
 	default:
 		return "Comment:"
 	}

@@ -31,6 +31,40 @@ func (svc *Service) addComment(_ context.Context, _ *mcpsdk.CallToolRequest, arg
 	return nil, CommentResult{Comment: CommentDTO{Author: c.Author, Body: c.Body, CreatedAt: formatTime(c.CreatedAt)}}, nil
 }
 
+// --- add_attachment ----------------------------------------------------------
+
+type AddAttachmentArgs struct {
+	Key string `json:"key" jsonschema:"the issue key, e.g. JEE-12"`
+	Ref string `json:"ref" jsonschema:"a URL or an absolute file path to attach"`
+}
+
+type AttachmentDTO struct {
+	Filename string `json:"filename"`
+	Path     string `json:"path"`
+	MIME     string `json:"mime,omitempty"`
+	IsURL    bool   `json:"is_url"`
+}
+
+type AttachmentResult struct {
+	Attachment AttachmentDTO `json:"attachment"`
+}
+
+func (svc *Service) addAttachment(_ context.Context, _ *mcpsdk.CallToolRequest, args AddAttachmentArgs) (*mcpsdk.CallToolResult, AttachmentResult, error) {
+	iss, err := svc.resolveIssue(args.Key)
+	if err != nil {
+		return nil, AttachmentResult{}, err
+	}
+	a := core.ClassifyAttachment(args.Ref)
+	a.IssueID = iss.ID
+	saved, err := svc.store.CreateAttachment(a)
+	if err != nil {
+		return nil, AttachmentResult{}, err
+	}
+	return nil, AttachmentResult{Attachment: AttachmentDTO{
+		Filename: saved.Filename, Path: saved.Path, MIME: saved.MIME, IsURL: saved.IsURL(),
+	}}, nil
+}
+
 // --- link_issues -------------------------------------------------------------
 
 type LinkIssuesArgs struct {

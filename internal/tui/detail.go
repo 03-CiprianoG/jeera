@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -49,6 +51,7 @@ const (
 	ikTag
 	ikComment
 	ikCron
+	ikAttach
 )
 
 // detailModel is the full-screen ticket view: a Glamour-rendered, scrollable
@@ -69,9 +72,10 @@ type detailModel struct {
 	epics     []core.Issue
 	issueTags []core.Tag
 	links     []store.LinkedIssue
-	comments  []core.Comment
-	runs      []core.Run
-	schedules []core.Schedule
+	comments    []core.Comment
+	runs        []core.Run
+	schedules   []core.Schedule
+	attachments []core.Attachment
 
 	vp        viewport.Model
 	desc      textarea.Model
@@ -149,6 +153,7 @@ func (d *detailModel) reload() {
 	d.comments, _ = d.store.ListComments(iss.ID)
 	d.runs, _ = d.store.ListRuns(iss.ID)
 	d.schedules, _ = d.store.ListSchedules(iss.ID)
+	d.attachments, _ = d.store.ListAttachments(iss.ID)
 	d.vp.SetHeight(d.descViewHeight())
 	d.renderDescription()
 }
@@ -196,6 +201,10 @@ func (d *detailModel) updateViewing(msg tea.Msg) (tea.Cmd, bool) {
 		return d.startEditDesc(), false
 	case "c":
 		return d.startInput(ikComment, ""), false
+	case "A":
+		return d.startInput(ikAttach, ""), false
+	case "o":
+		d.openAttachment()
 	case "s":
 		d.startRun()
 	case "D":
@@ -306,6 +315,20 @@ func (d *detailModel) toggleWorktree() {
 	d.reload()
 }
 
+// openAttachment opens the most recent attachment (the top of the sidebar list)
+// in the user's default app or browser.
+func (d *detailModel) openAttachment() {
+	if len(d.attachments) == 0 {
+		d.err = "no attachments to open"
+		return
+	}
+	if err := openExternal(d.attachments[0].Path); err != nil {
+		d.err = err.Error()
+		return
+	}
+	d.err = ""
+}
+
 func (d *detailModel) startEditDesc() tea.Cmd {
 	ta := textarea.New()
 	ta.SetWidth(d.descWidth())
@@ -350,6 +373,8 @@ func (d *detailModel) startInput(kind inputKind, value string) tea.Cmd {
 		ti.Placeholder = "comment"
 	case ikCron:
 		ti.Placeholder = "cron e.g. 0 9 * * * (min hour dom mon dow)"
+	case ikAttach:
+		ti.Placeholder = "https://… or /path/to/file"
 	}
 	d.input = ti
 	d.inputKind = kind
@@ -417,6 +442,25 @@ func (d *detailModel) submitInput(value string) {
 			return
 		}
 		if _, err := d.sched.Add(d.issue.ID, value, false); err != nil {
+			d.err = err.Error()
+		}
+	case ikAttach:
+		if value == "" {
+			return
+		}
+		a := core.ClassifyAttachment(value)
+		a.IssueID = d.issue.ID
+		if !a.IsURL() {
+			// Store an absolute path and the file size, so it opens regardless of
+			// the cwd later and the size can be shown.
+			if abs, err := filepath.Abs(value); err == nil {
+				a.Path = abs
+			}
+			if fi, err := os.Stat(a.Path); err == nil {
+				a.Size = fi.Size()
+			}
+		}
+		if _, err := d.store.CreateAttachment(a); err != nil {
 			d.err = err.Error()
 		}
 	}

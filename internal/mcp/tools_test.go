@@ -48,6 +48,36 @@ func TestCreateIssueDefaultsAndKey(t *testing.T) {
 	}
 }
 
+func TestAddAttachment(t *testing.T) {
+	svc := newTestService(t)
+	iss := mustCreate(t, svc, CreateIssueArgs{Project: "JEE", Title: "needs a spec"})
+
+	// A URL attachment.
+	_, out, err := svc.addAttachment(ctx, nil, AddAttachmentArgs{Key: iss.Key, Ref: "https://example.com/spec"})
+	if err != nil {
+		t.Fatalf("add_attachment(url): %v", err)
+	}
+	if !out.Attachment.IsURL || out.Attachment.Path != "https://example.com/spec" {
+		t.Errorf("url attachment DTO wrong: %+v", out.Attachment)
+	}
+
+	// A file attachment, with a MIME guessed from the extension.
+	_, out2, err := svc.addAttachment(ctx, nil, AddAttachmentArgs{Key: iss.Key, Ref: "/docs/diagram.png"})
+	if err != nil {
+		t.Fatalf("add_attachment(file): %v", err)
+	}
+	if out2.Attachment.IsURL || out2.Attachment.MIME != "image/png" || out2.Attachment.Filename != "diagram.png" {
+		t.Errorf("file attachment DTO wrong: %+v", out2.Attachment)
+	}
+}
+
+func TestAddAttachmentUnknownIssue(t *testing.T) {
+	svc := newTestService(t)
+	if _, _, err := svc.addAttachment(ctx, nil, AddAttachmentArgs{Key: "JEE-999", Ref: "https://x.com"}); err == nil {
+		t.Fatal("expected an error for an unknown issue")
+	}
+}
+
 func TestCreateIssueUnknownProject(t *testing.T) {
 	svc := newTestService(t)
 	if _, _, err := svc.createIssue(ctx, nil, CreateIssueArgs{Project: "NOPE", Title: "x"}); err == nil {

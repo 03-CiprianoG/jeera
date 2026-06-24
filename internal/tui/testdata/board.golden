@@ -1,4 +1,6 @@
   Jeera  Jeera JEE                                                                        ● mcp off 
+   Board    Sprints    Runs                                                                         
+─━━━━━━━━━───────────────────                                                                       
 ●  To Do                       2 ●  In Progress                 1 ●  Done                        1  
 ──────────────────────────────── ──────────────────────────────── ────────────────────────────────  
 ╭──────────────────────────────╮ ╭──────────────────────────────╮ ╭──────────────────────────────╮  
@@ -25,6 +27,4 @@
                                                                                                     
                                                                                                     
                                                                                                     
-                                                                                                    
-                                                                                                    
- ←/h prev column  →/l next column  ↑/k up  ↓/j down  n new  e rename  x delete  ? help  q quit
+ tab next view  ↑/k up  ↓/j down  ←/h prev column  →/l next column  n new  ? help  q quit

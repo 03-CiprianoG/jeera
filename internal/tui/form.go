@@ -127,7 +127,7 @@ func (f *formModel) View(t theme.Theme) string {
 func (m Model) updateForm(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
-		m.mode = modeBoard
+		m.mode = modeNormal
 		m.form = nil
 		return m, nil
 	case "enter":
@@ -144,7 +144,7 @@ func (m Model) updateForm(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 // open and surfaces the message; on success it closes and selects the result.
 func (m Model) submitForm() (tea.Model, tea.Cmd) {
 	if m.form == nil {
-		m.mode = modeBoard
+		m.mode = modeNormal
 		return m, nil
 	}
 	vals := m.form.values()
@@ -197,7 +197,7 @@ func (m Model) submitForm() (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) closeForm() {
-	m.mode = modeBoard
+	m.mode = modeNormal
 	m.form = nil
 	m.reload()
 }

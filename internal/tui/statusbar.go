@@ -35,6 +35,40 @@ func (m Model) renderHeader() string {
 	return lipgloss.NewStyle().Background(t.P.BgSurface).Width(m.width).Render(" " + inner + " ")
 }
 
+// renderNavbar is the destination strip beneath the header: Board · Sprints ·
+// Runs. The active destination carries the iris accent and a heavy underline;
+// the inactive ones sit muted on a light hairline. The in-ticket tab strip is
+// intended to adopt this same treatment, so the two read as one system.
+func (m Model) renderNavbar() string {
+	t := m.theme
+	items := []struct {
+		v     view
+		label string
+	}{
+		{viewBoard, "Board"},
+		{viewSprints, "Sprints"},
+		{viewRuns, "Runs"},
+	}
+
+	labels := make([]string, len(items))
+	// The underline starts under the row's single leading space, then tracks each
+	// tab's full width so the accent sits squarely beneath the active label.
+	rule := lipgloss.NewStyle().Foreground(t.P.Border).Render("─")
+	for i, it := range items {
+		if it.v == m.view {
+			labels[i] = t.TabActive.Render(it.label)
+			rule += lipgloss.NewStyle().Foreground(t.P.Focus).Render(strings.Repeat("━", lipgloss.Width(labels[i])))
+		} else {
+			labels[i] = t.Tab.Render(it.label)
+			rule += lipgloss.NewStyle().Foreground(t.P.Border).Render(strings.Repeat("─", lipgloss.Width(labels[i])))
+		}
+	}
+	tabs := " " + lipgloss.JoinHorizontal(lipgloss.Top, labels...)
+
+	band := lipgloss.NewStyle().Background(t.P.BgSurface).Width(m.width)
+	return lipgloss.JoinVertical(lipgloss.Left, band.Render(tabs), band.Render(rule))
+}
+
 // renderFooter is the bottom status bar: key hints on the left, transient
 // toast/error on the right. The hints are budgeted to the available width so
 // the bar never wraps; help and quit are always kept.

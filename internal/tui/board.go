@@ -113,29 +113,44 @@ func (m Model) renderCard(iss core.Issue, selected bool, colW int) string {
 	return style.Width(colW).Render(body)
 }
 
-// updateBoard handles keys while the board is focused.
-func (m Model) updateBoard(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+// handleGlobalKey handles the keys that work the same on every view: switching
+// destinations and opening the overlays. It returns handled=false for anything
+// the active view should interpret itself (its own navigation and actions).
+func (m Model) handleGlobalKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
 	switch {
 	case key.Matches(msg, m.keys.Quit):
-		return m, tea.Quit
+		return m, tea.Quit, true
+	case key.Matches(msg, m.keys.NextView):
+		m.switchView(+1)
+		return m, nil, true
+	case key.Matches(msg, m.keys.PrevView):
+		m.switchView(-1)
+		return m, nil, true
 	case key.Matches(msg, m.keys.Help):
 		m.mode = modeHelp
+		return m, nil, true
 	case key.Matches(msg, m.keys.MCP):
 		m.mode = modeMCP
-	case key.Matches(msg, m.keys.Runs):
-		m.recentRuns, _ = m.store.ListRecentRuns(50)
-		m.runsCursor = 0
-		m.mode = modeRuns
+		return m, nil, true
 	case key.Matches(msg, m.keys.Settings):
 		m.settings = newSettings(m.cfg, m.theme, m.width, m.height)
 		m.mode = modeSettings
+		return m, nil, true
 	case key.Matches(msg, m.keys.Project):
 		m.mode = modeProjects
 		m.projSel = m.activeProjectIndex()
+		return m, nil, true
 	case key.Matches(msg, m.keys.Refresh):
 		m.reload()
-		return m, toast("refreshed")
+		return m, toast("refreshed"), true
+	}
+	return m, nil, false
+}
 
+// updateBoard handles keys specific to the board view (the global keys are
+// intercepted earlier by handleGlobalKey).
+func (m Model) updateBoard(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	switch {
 	case key.Matches(msg, m.keys.Up):
 		m.cardIdx--
 		m.clampSelection()

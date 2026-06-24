@@ -5,30 +5,28 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 )
 
-// updateRuns drives the Runs overlay while it is focused: a cursor over recent
-// runs, with t/enter to re-open the selected run's session in a terminal, w to
-// follow a run's live log in a terminal, and esc/q (or R again) to close.
-// Unknown keys are ignored so the list stays put rather than dismissing on a
-// stray press.
+// updateRuns drives the Runs view: a cursor over recent runs, with t/enter to
+// re-open the selected run's session in a terminal and w to follow a run's live
+// log. Tab leaves the view (handled globally); unknown keys are ignored so the
+// list stays put rather than reacting to a stray press.
 func (m Model) updateRuns(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
-	case "esc", "q", "R":
-		m.mode = modeBoard
-	case "up", "k":
+	switch {
+	case key.Matches(msg, m.keys.Up):
 		if m.runsCursor > 0 {
 			m.runsCursor--
 		}
-	case "down", "j":
+	case key.Matches(msg, m.keys.Down):
 		if m.runsCursor < len(m.recentRuns)-1 {
 			m.runsCursor++
 		}
-	case "t", "enter":
+	case key.Matches(msg, m.keys.Resume), key.Matches(msg, m.keys.Enter):
 		return m, m.resumeSelectedRun()
-	case "w":
+	case key.Matches(msg, m.keys.Watch):
 		return m, m.watchSelectedRun()
 	}
 	return m, nil
@@ -87,10 +85,10 @@ func openOrCopy(inner *exec.Cmd, what string) tea.Cmd {
 	}
 }
 
-// runsWindow returns the [start, end) slice of a list of n rows to show so that
-// the cursor stays visible within visible rows. It scrolls only as far as needed
-// to keep the selection on screen.
-func runsWindow(cursor, n, visible int) (int, int) {
+// scrollWindow returns the [start, end) slice of a list of n rows to show so
+// that the cursor stays visible within `visible` rows. It scrolls only as far as
+// needed to keep the selection on screen. Shared by the Runs and Sprints views.
+func scrollWindow(cursor, n, visible int) (int, int) {
 	if visible < 1 {
 		visible = 1
 	}
@@ -123,15 +121,15 @@ func shortSession(id string) string {
 // be re-opened in an external terminal. It refreshes live as runs change.
 func (m Model) renderRuns(height int) string {
 	t := m.theme
-	title := t.Title.Render("Runs") + "   " + t.HelpDesc.Render(fmt.Sprintf("%d active", m.activeRuns))
-	lines := []string{title, ""}
+	header := t.Label.Render("Recent runs") + "   " + t.HelpDesc.Render(fmt.Sprintf("%d active", m.activeRuns))
+	lines := []string{header, ""}
 
 	if len(m.recentRuns) == 0 {
-		lines = append(lines, t.HelpDesc.Render("No runs yet. Open a ticket and press s to Start one."))
+		lines = append(lines, t.HelpDesc.Render("No runs yet. Open a ticket and press s to start one."))
 	}
 	// Window the list so the selected row is always on screen: the rows share the
-	// height with the title, the blank line and the footer hint.
-	start, end := runsWindow(m.runsCursor, len(m.recentRuns), height-3)
+	// height with the section label and the blank line beneath it.
+	start, end := scrollWindow(m.runsCursor, len(m.recentRuns), height-2)
 	for i := start; i < end; i++ {
 		r := m.recentRuns[i]
 		key := "?"
@@ -164,22 +162,7 @@ func (m Model) renderRuns(height int) string {
 		lines = append(lines, line)
 	}
 
-	body := fitHeight(lipgloss.JoinVertical(lipgloss.Left, lines...), height-1)
-	return lipgloss.JoinVertical(lipgloss.Left, body, m.runsHint())
-}
-
-// runsHint is the Runs overlay's footer: the resume affordance when there is a
-// run to act on, otherwise just how to close.
-func (m Model) runsHint() string {
-	t := m.theme
-	if len(m.recentRuns) == 0 {
-		return t.HelpKey.Render("esc") + " " + t.HelpDesc.Render("close")
-	}
-	seg := func(k, v string) string { return t.HelpKey.Render(k) + " " + t.HelpDesc.Render(v) }
-	return seg("↑/↓", "select") + "   " +
-		seg("t", "resume") + "   " +
-		seg("w", "watch") + "   " +
-		seg("esc", "close")
+	return fitHeight(lipgloss.JoinVertical(lipgloss.Left, lines...), height)
 }
 
 // runBadge is the active-run indicator for the header (empty when none).

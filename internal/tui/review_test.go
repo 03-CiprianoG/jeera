@@ -113,7 +113,7 @@ func TestConfirmCancelLeavesIssueIntact(t *testing.T) {
 	if _, err := st.GetIssue(iss.ID); err != nil {
 		t.Errorf("cancelling delete should leave the issue intact: %v", err)
 	}
-	if m.mode != modeBoard {
+	if m.mode != modeNormal {
 		t.Errorf("expected board mode after cancel, got %v", m.mode)
 	}
 }
@@ -132,7 +132,7 @@ func TestFormEscCancelsWithoutMutating(t *testing.T) {
 	next, _ = m.updateForm(keyPress("esc"))
 	m = next.(Model)
 
-	if m.mode != modeBoard || m.form != nil {
+	if m.mode != modeNormal || m.form != nil {
 		t.Errorf("esc should close the form")
 	}
 	if issues, _ := st.ListIssues(store.IssueFilter{}); len(issues) != 0 {
@@ -156,7 +156,7 @@ func TestProjectsPickerNavigateAndSwitch(t *testing.T) {
 	if m.active.KeyPrefix != "WEB" {
 		t.Errorf("expected active project WEB after switch, got %s", m.active.KeyPrefix)
 	}
-	if m.mode != modeBoard {
+	if m.mode != modeNormal {
 		t.Errorf("expected board mode after switch, got %v", m.mode)
 	}
 }

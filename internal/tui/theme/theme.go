@@ -186,6 +186,19 @@ func PriorityGlyph(p core.Priority) string {
 	}
 }
 
+// SprintStateColor returns the accent for a sprint's lifecycle state: the iris
+// focus for the live sprint, success for a finished one, muted for the future.
+func (t Theme) SprintStateColor(s core.SprintState) color.Color {
+	switch s {
+	case core.SprintActive:
+		return t.P.Focus
+	case core.SprintCompleted:
+		return t.P.Success
+	default: // future
+		return t.P.TextMuted
+	}
+}
+
 // RunStateColor returns the color for a run status badge.
 func (t Theme) RunStateColor(s core.RunStatus) color.Color {
 	switch s {

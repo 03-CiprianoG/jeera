@@ -1,0 +1,24 @@
+# Compiled binary
+/jeera
+/dist/
+*.exe
+*.test
+*.out
+
+# Go workspace / vendoring
+/vendor/
+go.work
+go.work.sum
+
+# Local data & secrets
+.env
+*.env
+*.local
+
+# OS & editor cruft
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*~

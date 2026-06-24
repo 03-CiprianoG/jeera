@@ -1,0 +1,29 @@
+name: Bug report
+description: Report something that isn't working as expected
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: A clear description of the bug and what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Run `jeera ...`
+        2. Press ...
+        3. See ...
+  - type: input
+    id: version
+    attributes:
+      label: Jeera version
+      description: Output of `jeera version`
+  - type: input
+    id: env
+    attributes:
+      label: OS & terminal
+      placeholder: "e.g. macOS 15 / WezTerm, Ubuntu 24.04 / kitty"

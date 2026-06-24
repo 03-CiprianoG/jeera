@@ -1,0 +1,29 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Build, vet & test
+        run: |
+          if [ -z "$(find . -name '*.go' -not -path './vendor/*' -print -quit)" ]; then
+            echo "No Go packages yet — skipping build/vet/test (project scaffold)."
+            exit 0
+          fi
+          go build ./...
+          go vet ./...
+          go test ./...

@@ -73,6 +73,24 @@ func (d *detailModel) renderSidebar() string {
 			lines = append(lines, "  "+t.CardMeta.Render(string(l.Type))+" "+t.CardKey.Render(l.Issue.Key))
 		}
 	}
+
+	// Worktree + runs.
+	wt := "on"
+	if d.issue.WorktreeOn != nil && !*d.issue.WorktreeOn {
+		wt = "off"
+	}
+	lines = append(lines, "", t.Label.Render("Worktree")+" "+t.StatusText.Render(wt))
+	if len(d.runs) > 0 {
+		lines = append(lines, t.Label.Render("Runs"))
+		for i, r := range d.runs {
+			if i >= 3 {
+				break
+			}
+			rs := lipgloss.NewStyle().Foreground(t.RunStateColor(r.Status))
+			lines = append(lines, "  "+t.CardMeta.Render(fmt.Sprintf("v%d", r.Version))+" "+rs.Render(string(r.Status)))
+		}
+	}
+
 	body := lipgloss.JoinVertical(lipgloss.Left, lines...)
 	return lipgloss.NewStyle().Width(w).Render(fitHeight(body, d.bodyHeight()))
 }
@@ -103,8 +121,8 @@ func (d *detailModel) renderFooter() string {
 			t.HelpKey.Render("enter") + " " + t.HelpDesc.Render("save")
 	default:
 		segs := []struct{ k, v string }{
-			{"j/k", "field"}, {"h/l", "change"}, {"enter", "edit"},
-			{"e", "describe"}, {"c", "comment"}, {"x", "untag"}, {"esc", "back"},
+			{"j/k", "field"}, {"h/l", "change"}, {"e", "describe"}, {"c", "comment"},
+			{"s", "start"}, {"w", "worktree"}, {"esc", "back"},
 		}
 		parts := make([]string, 0, len(segs))
 		for _, s := range segs {

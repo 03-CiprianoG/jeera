@@ -6,6 +6,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/03-CiprianoG/jeera/internal/mcp"
+	"github.com/03-CiprianoG/jeera/internal/paths"
+	"github.com/03-CiprianoG/jeera/internal/run"
 	"github.com/03-CiprianoG/jeera/internal/store"
 )
 
@@ -14,7 +16,18 @@ import (
 // are bridged into the program so the board refreshes the moment an agent writes
 // over MCP — the human's board and the agents never drift apart.
 func Run(ctx context.Context, st *store.Store, mcpSrv *mcp.Server) error {
-	model := New(st, mcpSrv)
+	// The run manager spawns agents and points them at this live MCP endpoint.
+	mgr := run.NewManager(st, paths.DataDir(), func() string {
+		if mcpSrv == nil {
+			return ""
+		}
+		return mcpSrv.Status().URL
+	})
+	// Cancel and reap any in-flight runs before the store closes, so no agent
+	// process is orphaned and no run writes to a torn-down database.
+	defer mgr.Shutdown()
+
+	model := New(st, mcpSrv, mgr)
 	p := tea.NewProgram(model)
 
 	// Bridge store change events → the program.

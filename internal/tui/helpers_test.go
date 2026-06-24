@@ -25,7 +25,7 @@ func newTestModel(t *testing.T) (Model, *store.Store) {
 		t.Fatalf("store.Open: %v", err)
 	}
 	t.Cleanup(func() { _ = st.Close() })
-	m := New(st, nil)
+	m := New(st, nil, nil)
 	m.width, m.height = 100, 30
 	return m, st
 }

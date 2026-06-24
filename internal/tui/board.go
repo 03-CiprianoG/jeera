@@ -122,6 +122,9 @@ func (m Model) updateBoard(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.mode = modeHelp
 	case key.Matches(msg, m.keys.MCP):
 		m.mode = modeMCP
+	case key.Matches(msg, m.keys.Runs):
+		m.recentRuns, _ = m.store.ListRecentRuns(50)
+		m.mode = modeRuns
 	case key.Matches(msg, m.keys.Project):
 		m.mode = modeProjects
 		m.projSel = m.activeProjectIndex()
@@ -174,7 +177,7 @@ func (m Model) updateBoard(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.moveSelected(-1)
 	case key.Matches(msg, m.keys.Enter):
 		if iss, ok := m.selectedIssue(); ok {
-			m.detail = newDetail(m.store, m.theme, iss.ID, m.width, m.height)
+			m.detail = newDetail(m.store, m.runMgr, m.theme, iss.ID, m.width, m.height)
 			m.mode = modeDetail
 		}
 	}

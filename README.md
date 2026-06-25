@@ -1,75 +1,61 @@
 <div align="center">
 
+<img src="docs/logo.png" alt="Jeera" width="148" />
+
 # Jeera
 
 **Agentic-first issue tracking that lives in your terminal.**
 
-A [lazygit](https://github.com/jesseduffield/lazygit)-inspired TUI that reimagines issue tracking for the age of AI agents — with a built-in [MCP](https://modelcontextprotocol.io) server so your agents always know about your tickets, and a one-key **Start** that puts those agents to work on them.
+*`lazygit` for issue tracking — local-first, MCP-native, and built to put your AI agents to work on the tickets they read.*
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-8891D9.svg)](LICENSE)
 [![CI](https://github.com/03-CiprianoG/jeera/actions/workflows/ci.yml/badge.svg)](https://github.com/03-CiprianoG/jeera/actions/workflows/ci.yml)
-![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white)
-[![Release](https://img.shields.io/github/v/release/03-CiprianoG/jeera?color=8891D9)](https://github.com/03-CiprianoG/jeera/releases/latest)
+[![Release](https://img.shields.io/github/v/release/03-CiprianoG/jeera?color=8891D9&label=release)](https://github.com/03-CiprianoG/jeera/releases/latest)
+![Go](https://img.shields.io/badge/Go-1.26-6FB3C9?logo=go&logoColor=white)
+![MCP](https://img.shields.io/badge/MCP-16%20tools-7FB894)
+![Single binary](https://img.shields.io/badge/single%20static%20binary-no%20account%2C%20offline-5E647A)
+
+<samp>
+<a href="#why-jeera">Why</a> &nbsp;·&nbsp;
+<a href="#how-it-works">How it works</a> &nbsp;·&nbsp;
+<a href="#a-look-around">Screenshots</a> &nbsp;·&nbsp;
+<a href="#features">Features</a> &nbsp;·&nbsp;
+<a href="#agent-tools-mcp">MCP tools</a> &nbsp;·&nbsp;
+<a href="#keybindings">Keys</a> &nbsp;·&nbsp;
+<a href="#install">Install</a> &nbsp;·&nbsp;
+<a href="#configuration">Config</a>
+</samp>
 
 </div>
 
 > [!NOTE]
-> **Built in the open.** Jeera reached **v1.0.0** — feature-complete and stable — over a series of tested, [semantically versioned](https://semver.org) releases. The **Status** column below tracks what's available today; a couple of nice-to-haves (dedicated backlog/sprint/epic screens) are still on the way.
+> **One binary.** Run `jeera` and you get a calm terminal board for **you** and an embedded **MCP server** for your **agents** — both reading and writing one local source of truth — plus a one-key **Start** that spawns a coding agent on a ticket. No account, no cloud, no telemetry.
 
-## What is Jeera?
+<div align="center">
+  <img src="docs/screens/board.png" alt="The Jeera kanban board" width="100%" />
+</div>
 
-Jeera is an open-source issue tracker that runs entirely in your terminal. Take the keyboard-driven flow of `lazygit`, apply it to issues, epics, sprints and boards — then design from the first commit for a world where **AI agents are first-class operators**, not bystanders.
+---
 
-Jeera is **local-first** and the **system of record**: it owns your tickets in a local SQLite store on your machine. A human drives the board through a fast, calm TUI; agents drive the *same* tickets through a built-in **Model Context Protocol server**. Both read and write one source of truth, so they never drift apart — move a card in the TUI and an agent sees it; let an agent transition an issue and the board updates live.
+## Why Jeera?
 
-And because Jeera knows how to talk to the AI coding CLIs already on your machine, a ticket isn't just something you track — it's something you can **run**.
+For two decades, shipping software has meant *running the loop*: slice the work into tickets, move cards across a board, ship, repeat. Agile won — and tools like Jira won with it. **Everyone remembers cutting their first ticket.** 🎟️
 
-## Why "agentic-first"?
+But the loop has changed shape. In agentic development, **execution is no longer the bottleneck — planning is.** An agent can write the code in minutes; the hard part is deciding *what* to build, slicing it into well-formed work, and keeping the whole picture coherent. The board matters *more* than ever — it just has a new kind of teammate reading from it.
 
-Most tools bolt a chat box onto a GUI. Jeera inverts that. The agent isn't a feature *inside* the app — the app is a clean surface that agents connect to **and** a launchpad that puts agents to work:
+So Jeera flips the model on its head:
 
-- Run **`jeera`** and you get two things at once: a snappy terminal board for you **and** an embedded MCP server (local HTTP) running right beside it.
-- Point any MCP client (Claude Code, Claude Desktop, Cursor, a cron agent…) at that server — *if and where you choose* — and it can **list, create, transition, comment on, and link issues**, instantly aware of every ticket, with no scraping and no glue code.
-- Hit **Start** on a ticket and Jeera spawns a local coding agent (`claude`, `codex`) to actually *do the work* — in an isolated git worktree, pointed back at Jeera's own MCP so it updates the ticket as it goes. No API keys, no SDKs: it drives the CLIs you already have.
+- 🤖 **Tickets are assigned to agents, not just colleagues.** A built-in **Model Context Protocol** server lets any agent *list, create, transition, comment on and link* issues. Your agents always know the plan — no scraping, no glue code, no copy-paste.
+- ⚡ **A ticket is something you can *run*.** Press **Start** and Jeera spawns a local coding agent (`claude`, `codex`) on the issue — in its own isolated git worktree, pointed back at Jeera's own MCP, so it moves the ticket through *In Progress → Done* as it works.
+- 🧩 **It's a CLI, and it respects that.** Written in **Go** as a single, fast, lightweight static binary. **No account. Works fully offline. Lives in your terminal.** Your issues are yours — in a local SQLite file on your machine.
 
-## Features
+Jeera is **local-first** and the **system of record**: it *owns* your tickets. A human drives the board through a snappy TUI; agents drive the *same* tickets over MCP. Move a card and an agent sees it; let an agent transition an issue and the board updates live. They never drift apart.
 
-> Legend: ✅ available · 🔭 in progress · 🔜 planned
+---
 
-### Issue tracking, reimagined for the terminal
+## How it works
 
-| Feature | Status | Notes |
-|---|:---:|---|
-| **Projects** bound to a git repo | ✅ | Each project points at a repository (set on create); switch between many |
-| **Issues** — epics, stories, tasks, bugs, subtasks | ✅ | Per-project keys (`JEE-12`), Markdown descriptions |
-| **Statuses** & a configurable board | ✅ | Named columns grouped into To Do / In Progress / In Review / Done lanes |
-| **Priority**, **story points**, **tags** | ✅ | Five priority levels, point estimates, project-scoped labels |
-| **Sprints** | ✅ | Time-boxed, future/active/completed, backlog ↔ sprint |
-| **Relationships** | ✅ | blocks / blocked-by / relates / duplicates, shown from both sides |
-| **Model assignees** | ✅ | Work is assigned to a *model* — provider + model + reasoning effort |
-| **Comments & activity** | ✅ | Humans and agent runs both post to the timeline |
-| **Attachments** | ✅ | Links & files pinned to a ticket (`A`), opened externally (`o`); references, not bytes |
-| **Kanban board** (keyboard-first) | ✅ | vim-style navigation, create/rename/delete, move cards across columns, live refresh |
-| **Ticket detail** view | ✅ | Markdown edit/preview, in-place editing of status/type/priority/points/assignee/sprint/epic/tags, comments |
-| **Backlog · Sprints · Epics** views | 🔭 | Dedicated management screens (assignment already works from the ticket) |
-
-### Jeera superpowers
-
-| Feature | Status | Notes |
-|---|:---:|---|
-| **Embedded MCP server** | ✅ | Serves over local HTTP with `jeera` / `jeera --headless`; 16 typed tools for agents |
-| **Start a ticket** | ✅ | Press `s` to spawn `claude`/`codex` on the issue; it drives the ticket over MCP, streamed into the Runs view |
-| **Run versioning** | ✅ | Every Start is a new, recorded run version with its provider/model/effort, session and status |
-| **Per-ticket git worktrees** | ✅ | Each run is isolated on its own branch (default on, toggle off with `w`) |
-| **Model + effort picker** | ✅ | Choose the provider, model and reasoning effort per ticket from the detail view |
-| **Schedule Start** | ✅ | Press `S` and enter a cron spec; Jeera runs the ticket on time, persisted across restarts and headless |
-| **Start with children** | ✅ | `D` runs sub-issues in dependency order, then the parent |
-| **Expand / Discuss** | ✅ | `d` drops into an interactive agent session pre-loaded with the ticket |
-| **Settings & defaults** | ✅ | Global → per-project → per-ticket cascade; `,` edits the global defaults |
-
-## How it runs
-
-**One binary, one command, one source of truth.** Running `jeera` starts the TUI and the embedded MCP server together — both backed by the same core and store, with an execution engine and scheduler that drive your local AI CLIs:
+`jeera` starts **two front-ends over one core** in a single process — a Bubble Tea board and an HTTP MCP server — backed by a shared store, an execution engine, and a scheduler that drive your local AI CLIs.
 
 ```
                   ┌──────────────────────────────────────────────┐
@@ -94,18 +80,271 @@ Most tools bolt a chat box onto a GUI. Jeera inverts that. The agent isn't a fea
                   pointed back at Jeera's own MCP server
 ```
 
-| Command | Result |
+| Command | What it does |
 |---|---|
-| `jeera` | TUI **and** MCP server (default) |
-| `jeera --headless` | MCP server only (no TUI) |
-| `jeera --no-mcp` | TUI only (no MCP server) |
+| `jeera` | TUI **and** MCP server (the default) |
+| `jeera --headless` | MCP server only — no TUI (great for servers & cron) |
+| `jeera --no-mcp` | TUI only — no MCP server |
 | `jeera version` | print version and exit |
+
+The TUI's footer always shows the live **MCP wire** — `● jeera 127.0.0.1:7777` when an agent can connect — so the human↔agent link is never a mystery.
+
+---
+
+## A look around
+
+Every shot below is the real TUI over a seeded demo project — **Helios**, a realtime-analytics board with epics, sprints, bugs, links, attachments, scheduled runs and a flagship ticket (`HEL-18`).
+
+### The ticket detail — a focusable "bento" of everything
+
+<div align="center">
+  <img src="docs/screens/ticket.png" alt="Ticket detail (bento) for HEL-18" width="100%" />
+</div>
+
+> `HEL-18` open: rendered Markdown **Description**, a **Properties** panel (status · type · priority · points · sprint · epic · tags), an **Agent** panel (the model assignee, worktree toggle, and **Run / Discuss / Schedule**), **Activity** (human + agent-run comments) and **Relations & Files** (links + attachments). `tab` walks the panels; edits save instantly.
+
+### Runs, Sprints & Backlog
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screens/runs.png" alt="Runs view" width="100%" /></td>
+<td width="50%"><img src="docs/screens/sprints.png" alt="Sprints view" width="100%" /></td>
+</tr>
+<tr>
+<td valign="top"><b>Runs</b> — every execution, versioned (<code>v1</code>, <code>v2</code>…), across <i>queued / running / succeeded / failed / cancelled / blocked</i>, with provider·model and resumable sessions.</td>
+<td valign="top"><b>Sprints</b> — time-boxed sets ordered <i>active → future → completed</i>, each with its goal, date window, issue count and points.</td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screens/backlog.png" alt="Backlog view" width="100%" /></td>
+<td width="50%"><img src="docs/screens/mcp.png" alt="MCP server overlay" width="100%" /></td>
+</tr>
+<tr>
+<td valign="top"><b>Backlog</b> — every unsprinted issue in one keyboard-driven list; <code>a</code> assigns one straight into a sprint.</td>
+<td valign="top"><b>MCP overlay</b> (<code>m</code>) — live status, the endpoint URL, and copy-paste snippets to connect Claude Code or an <code>.mcp.json</code> client.</td>
+</tr>
+</table>
+
+<details>
+<summary><b>More views</b> — Settings cascade, Projects, the create-issue form, the Agent panel & the full keymap</summary>
+<br/>
+<table>
+<tr>
+<td width="50%"><img src="docs/screens/settings.png" alt="Settings — global defaults" width="100%" /></td>
+<td width="50%"><img src="docs/screens/projects.png" alt="Projects overlay" width="100%" /></td>
+</tr>
+<tr>
+<td valign="top"><b>Settings</b> (<code>,</code>) — the global run defaults a project or ticket can override.</td>
+<td valign="top"><b>Projects</b> (<code>p</code>) — switch between boards; each is bound to a git repo.</td>
+</tr>
+<tr>
+<td width="50%"><img src="docs/screens/form.png" alt="Create-issue form" width="100%" /></td>
+<td width="50%"><img src="docs/screens/ticket-agent.png" alt="Ticket detail with the Agent panel focused" width="100%" /></td>
+</tr>
+<tr>
+<td valign="top"><b>Create issue</b> — type, priority, points, sprint & epic in one modal.</td>
+<td valign="top"><b>Agent panel</b> focused — pick the model & effort, toggle the worktree, then <b>Run</b>, <b>Discuss</b> or <b>Schedule</b>.</td>
+</tr>
+</table>
+<div align="center"><img src="docs/screens/help.png" alt="Help / keymap overlay" width="70%" /></div>
+<div align="center"><sub>The full keymap (<code>?</code>) — <code>⌥tab</code> switches views, <code>tab</code> moves focus inside a view, <code>⇧+arrows</code> move a ticket.</sub></div>
+</details>
+
+---
+
+## Features
+
+> Legend: ✅ available today · 🔭 on the roadmap
+
+<details open>
+<summary><b>📋 The board & issues</b></summary>
+<br/>
+
+| Feature | | Notes |
+|---|:--:|---|
+| **Projects** bound to a git repo | ✅ | Each project points at a repository and owns a key prefix (`HEL-18`); switch between many |
+| **Issues** — epics · stories · tasks · bugs · subtasks | ✅ | Markdown descriptions, per-project sequential keys |
+| **Kanban board** | ✅ | Status columns grouped into *To Do / In Progress / In Review / Done* lanes; move cards with `⇧+arrows` |
+| **Ticket detail "bento"** | ✅ | Markdown edit/preview + in-place editing of status, type, priority, points, sprint, epic, tags & assignee |
+| **Backlog** view | ✅ | Every unsprinted issue in one list; assign straight to a sprint |
+| **Sprints** | ✅ | Time-boxed, *future / active / completed*, goals & date windows, backlog ↔ sprint |
+| **Priority · story points · tags** | ✅ | Five priority levels, point estimates, project-scoped colored labels |
+| **Relationships** | ✅ | *blocks · blocked-by · relates · duplicates*, shown from both sides |
+| **Comments & activity** | ✅ | Humans **and** agent runs post to the same timeline |
+| **Attachments** | ✅ | URLs & file refs pinned to a ticket, opened externally (references, not bytes) |
+| **Model assignees** | ✅ | Work is assigned to a *model* — provider + model + reasoning effort, not a person |
+| **Live refresh** | ✅ | The board re-renders the instant an agent writes over MCP |
+| Dedicated epic board | 🔭 | Epics already work as parents on the ticket; a dedicated screen is on the way |
+
+</details>
+
+<details open>
+<summary><b>⚡ Agentic execution</b></summary>
+<br/>
+
+| Feature | | Notes |
+|---|:--:|---|
+| **Embedded MCP server** | ✅ | Streamable HTTP, started with `jeera` / `--headless`; **16 typed tools** for agents |
+| **Start a ticket** | ✅ | Spawn `claude`/`codex` on the issue; it drives the ticket over MCP, streamed into **Runs** |
+| **Run versioning** | ✅ | Every Start is a new, recorded run version (provider · model · effort · session · status · lineage) |
+| **Per-ticket git worktrees** | ✅ | Each run is isolated on its own branch (default on, toggle per ticket) |
+| **Model + effort picker** | ✅ | Choose provider, model and reasoning effort per ticket from the detail view |
+| **Schedule Start** | ✅ | Enter a cron spec; Jeera runs the ticket on time — persisted across restarts & headless |
+| **Start with children** | ✅ | Run sub-issues in dependency order, then the parent |
+| **Discuss / Expand** | ✅ | Drop into an interactive agent session pre-loaded with the ticket — in a new terminal, never inline |
+| **Resume & Watch** | ✅ | Re-open a past run's session, or tail a live run's log, from the Runs view |
+| **Terminal-or-copy launch** | ✅ | Sessions open in tmux/zellij or a GUI terminal; over SSH with none, the command is copied to your clipboard |
+
+</details>
+
+<details open>
+<summary><b>🧩 Config, data & integration</b></summary>
+<br/>
+
+| Feature | | Notes |
+|---|:--:|---|
+| **Settings cascade** | ✅ | Resolve every run **issue → project → global**; edit global defaults live with `,` |
+| **Pluggable providers** | ✅ | `claude` and `codex` drivers — it drives the CLIs you already have, no API keys or SDKs |
+| **Local-first SQLite store** | ✅ | The system of record, on your machine; honors `XDG_*` and `JEERA_DATA_DIR` |
+| **Always-on MCP "wire"** | ✅ | The footer shows the live endpoint agents connect to |
+| **Single static binary** | ✅ | CGO-free Go; trivial cross-compilation, nothing to install but the binary |
+
+</details>
+
+---
+
+## Agent tools (MCP)
+
+Point any MCP client at the server (the TUI shows the live URL) and it gets **16 typed tools** over Streamable HTTP at `http://127.0.0.1:7777`. Agents address everything by human-readable identifiers — issues by `key` (`HEL-18`), projects by `key_prefix`, and statuses / sprints / epics / tags by **name**. Internal numeric IDs are never exposed.
+
+| Tool | Category | Purpose |
+|---|---|---|
+| `list_projects` | Projects | List all projects |
+| `get_project` | Projects | Get a project and its board columns by key prefix |
+| `create_project` | Projects | Create a board with a key prefix, bound to a git repo |
+| `list_issues` | Issues | List issues, filtered by status / sprint / epic / type / text |
+| `get_issue` | Issues | Get one issue by key, with its links & comments |
+| `create_issue` | Issues | Create an issue in a project |
+| `update_issue` | Issues | Partially update an issue's fields |
+| `transition_issue` | Issues | Move an issue to another status/column by name |
+| `set_assignee` | Issues | Assign an issue to a model (provider · model · effort) |
+| `add_comment` | Collaboration | Add a comment to an issue's timeline |
+| `link_issues` | Relationships | Relate two issues (blocks / blocked_by / relates / duplicates) |
+| `add_attachment` | Attachments | Attach a URL or file-path reference to an issue |
+| `list_sprints` | Sprints | List a project's sprints |
+| `add_to_sprint` | Sprints | Add an issue to a sprint (or return it to the backlog) |
+| `list_tags` | Tags | List a project's tags |
+| `tag_issue` | Tags | Add a tag to an issue, creating it if needed |
+
+<details>
+<summary><b>Full tool reference</b> — arguments & return shapes for all 16 tools</summary>
+<br/>
+
+Optional arguments are marked `?`. Most tools return an **Issue** object (`key`, `title`, `type`, `status`, `priority`, `story_points?`, `assignee?`, `epic_key?`, `sprint?`, `tags?`, `description?`, timestamps).
+
+**Projects**
+
+| Tool | Arguments | Returns |
+|---|---|---|
+| `list_projects` | _(none)_ | `{ projects: Project[] }` |
+| `get_project` | `project` | `Project` + board `statuses` |
+| `create_project` | `name`, `key_prefix`, `repo_path?` | `Project` + `statuses` |
+
+**Issues**
+
+| Tool | Arguments | Returns |
+|---|---|---|
+| `list_issues` | `project`, `status?`, `sprint?`, `epic?`, `type?`, `text?` | `{ issues: Issue[] }` |
+| `get_issue` | `key` | `Issue` + `links[]` + `comments[]` |
+| `create_issue` | `project`, `title`, `type?`, `description?`, `priority?`, `story_points?`, `status?`, `epic?`, `sprint?` | `Issue` |
+| `update_issue` | `key`, `title?`, `description?`, `priority?`, `type?`, `story_points?` | `Issue` |
+| `transition_issue` | `key`, `status` | `Issue` |
+| `set_assignee` | `key`, `provider`, `model`, `effort?` | `Issue` |
+
+**Collaboration · Relationships · Attachments**
+
+| Tool | Arguments | Returns |
+|---|---|---|
+| `add_comment` | `key`, `body`, `author?` | `{ comment }` |
+| `link_issues` | `source`, `target`, `type` | `{ ok, source, target, type }` |
+| `add_attachment` | `key`, `ref` _(URL or file path)_ | `{ attachment }` |
+
+**Sprints · Tags**
+
+| Tool | Arguments | Returns |
+|---|---|---|
+| `list_sprints` | `project` | `{ sprints: Sprint[] }` |
+| `add_to_sprint` | `key`, `sprint?` _(empty → backlog)_ | `Issue` |
+| `list_tags` | `project` | `{ tags: Tag[] }` |
+| `tag_issue` | `key`, `tag` | `Issue` |
+
+**Enums** — `type`: `epic · story · task · bug · subtask` · `priority`: `lowest · low · medium · high · highest` · `provider`: `claude · codex` · `effort`: `low · medium · high · xhigh · max` · `link type`: `blocks · blocked_by · relates · duplicates`.
+
+</details>
+
+---
+
+## Keybindings
+
+Jeera is keyboard-first. `⌥tab` switches the four top-level views; `tab` moves focus *inside* a view; `⇧+arrows` move a ticket across columns. Press `?` any time for the full map.
+
+<details>
+<summary><b>The full keymap</b></summary>
+<br/>
+
+**Global** (work from every view)
+
+| Key | Action | | Key | Action |
+|---|---|---|---|---|
+| `⌥tab` / `⌥⇧tab` | next / prev view | | `p` | projects |
+| `↑↓←→` / `hjkl` | move cursor | | `m` | MCP server info |
+| `enter` | open / confirm | | `,` | settings |
+| `n` | new (by context) | | `r` | refresh |
+| `?` | help | | `q` / `ctrl+c` | quit |
+
+**Board**
+
+| Key | Action |
+|---|---|
+| `⇧←` / `⇧→` (`H` / `L`) | move ticket to the adjacent column |
+| `e` · `x` | rename · delete the selected issue |
+| `enter` | open ticket detail (or the `+ New issue` slot) |
+
+**Backlog & Sprints**
+
+| Key | Action |
+|---|---|
+| `a` | assign issue to a sprint (Backlog) · add/move issue (Sprints) |
+| `s` | advance a sprint's state — *future → active → completed* |
+| `⌫` | pull a sprinted issue back to the backlog |
+| `n` · `x` | new sprint · delete sprint |
+
+**Runs**
+
+| Key | Action |
+|---|---|
+| `t` / `enter` | resume the selected run's session in a terminal |
+| `w` | watch (tail) the selected run's live log |
+
+**Ticket detail (bento)**
+
+| Key | Action |
+|---|---|
+| `tab` / `⇧tab` | focus next / previous panel |
+| `←/→` (`h`/`l`) | cycle the focused field's value |
+| `enter` | edit the field · run a panel button (Run / Discuss / Schedule, Attach, Comment) |
+| `e` | edit the Markdown description (`ctrl+s` to save) |
+| `o` | open the selected attachment externally |
+| `esc` / `q` | back to the board |
+
+</details>
+
+---
 
 ## Install
 
 **Pre-built binaries** — download the archive for your OS/arch from the [latest release](https://github.com/03-CiprianoG/jeera/releases/latest), extract, and put `jeera` on your `PATH`.
 
-**`go install`** (requires Go 1.25+):
+**`go install`** (Go 1.26+):
 
 ```sh
 go install github.com/03-CiprianoG/jeera@latest
@@ -120,17 +359,19 @@ go build -o jeera .     # single static binary (CGO-free)
 ./jeera version
 ```
 
-Jeera stores its data under your XDG data directory (`~/.local/share/jeera/jeera.db`) and reads configuration from `~/.config/jeera/`. Both honor `XDG_*` and the `JEERA_DATA_DIR` / `JEERA_CONFIG_DIR` overrides.
+Jeera stores data under your XDG data dir (`~/.local/share/jeera/jeera.db`) and reads config from `~/.config/jeera/`. Both honor `XDG_*` and the `JEERA_DATA_DIR` / `JEERA_CONFIG_DIR` overrides.
+
+---
 
 ## Connecting an agent
 
-Once the MCP server is running (shown in the TUI's status bar), point your client at it. For Claude Code:
+With the server running (its URL is shown in the TUI footer and the `m` overlay), point your client at it. For **Claude Code**:
 
 ```sh
 claude mcp add --transport http jeera http://127.0.0.1:7777
 ```
 
-…or drop this into `.mcp.json` (the TUI shows the live port and a copy-paste block):
+…or drop this into `.mcp.json`:
 
 ```json
 {
@@ -140,9 +381,13 @@ claude mcp add --transport http jeera http://127.0.0.1:7777
 }
 ```
 
+Now your agent can read and write the same board you're looking at — and you can hit **Start** to let Jeera run an agent on a ticket for you.
+
+---
+
 ## Configuration
 
-Jeera resolves every run's settings through a three-layer cascade — **issue → project → global** — so you set sensible defaults once and override them only where it matters. Press `,` in the board to edit the global defaults live, or write them to `~/.config/jeera/config.toml`:
+Every run's settings resolve through a three-layer cascade — **issue → project → global** — so you set sensible defaults once and override only where it matters. Press `,` in the board to edit the global defaults live, or write `~/.config/jeera/config.toml`:
 
 ```toml
 mcp_port = 7777          # preferred MCP port (JEERA_MCP_PORT still wins)
@@ -155,48 +400,49 @@ worktree_on     = true                # isolate each run in a git worktree
 permission_mode = "bypassPermissions" # bypassPermissions | acceptEdits | plan | default
 ```
 
-A project can override any default, and an individual ticket overrides the project — a model that doesn't fit the resolved provider falls back to that provider's default, so a run never starts misconfigured.
+A project can override any default, and a ticket overrides its project — and a model that doesn't fit the resolved provider falls back to that provider's default, so a run never starts misconfigured.
 
-## Screenshots
+---
 
-![The Jeera kanban board](docs/board.png)
+## Built with
 
-*The board: status columns, model-assignee cards, and the always-on **MCP wire** (top-right) showing the live endpoint an agent can connect to. Press Enter for the ticket detail editor, `s` to start an agent on a ticket, and `R` for the live Runs view.*
-
-## Stack
-
-Chosen deliberately, not by default — every external API verified against current upstream releases:
+Chosen deliberately, every external API verified against current upstream releases.
 
 | Layer | Choice | Why |
-|-------|--------|-----|
+|---|---|---|
 | Language | **Go 1.26** | Single static binary, trivial cross-compilation, strong concurrency |
-| TUI | **Bubble Tea v2** + **Lip Gloss v2** + **Bubbles v2** | The gold standard for clean terminal UIs; v2's cell renderer is built for speed |
+| TUI | **Bubble Tea v2** · **Lip Gloss v2** · **Bubbles v2** | The gold standard for clean terminal UIs; v2's cell renderer is built for speed |
 | Markdown | **Glamour v2** | Styled rendering of ticket descriptions |
-| Agents (server) | **MCP Go SDK** (official, GA) | The same binary serves agents and humans over Streamable HTTP |
+| Agents (server) | **MCP Go SDK** (official) | The same binary serves agents and humans over Streamable HTTP |
 | Agents (execution) | **`claude` / `codex` CLIs** | Drives the tools you already have — no API keys, no SDKs |
 | Storage | **modernc.org/sqlite** (pure Go) + **goose** | Local-first system of record; keeps the binary static (no CGO) |
 | Scheduling | **gocron** | In-process cron for "Schedule Start" |
 
+The interface is one calm design system — *"Slate & Iris"*: a deep blue-slate base, soft parchment text, and a single restrained iris accent reserved for focus and the MCP wire.
+
+---
+
 ## Roadmap
 
-Released under semantic versioning; each milestone is one or more pull requests.
+Released under [semantic versioning](https://semver.org); each milestone is one or more pull requests. Jeera is **feature-complete and stable** (latest: see the [release badge](https://github.com/03-CiprianoG/jeera/releases/latest)).
 
 - [x] **Foundation** — domain model + local SQLite store
 - [x] **MCP server** — 16 typed tools over the shared store
-- [x] **v0.1.0** — design system + Kanban board (first runnable release)
-- [x] **v0.2.0** — ticket detail view: rich-text editing + all the issue fields you'd expect + comments
-- [x] **v0.3.0** — execution engine: Start / worktrees / runs / versioning
-- [x] **v0.4.0** — scheduling: cron a ticket to run itself, persisted and headless
-- [x] **v0.5.0** — settings: global → project → ticket config cascade, project repo paths
-- [x] **v0.6.0** — agent actions: Discuss/Expand + Start-with-children
-- [x] **v0.7.0** — attachments: links, file refs, external open
-- [x] **v1.0.0** — feature-complete; GoReleaser cross-platform binaries + `go install` *(you are here)*
+- [x] **Kanban board** — design system + the human's board
+- [x] **Ticket detail** — rich-text editing, every field, comments
+- [x] **Execution engine** — Start / worktrees / runs / versioning
+- [x] **Scheduling** — cron a ticket to run itself, persisted & headless
+- [x] **Settings cascade** — global → project → ticket config
+- [x] **Agent actions** — Discuss/Expand + Start-with-children
+- [x] **Attachments** — links, file refs, external open
+- [x] **Backlog & Sprints** views — dedicated management screens
+- [ ] **Dedicated epic board**
+
+---
 
 ## Contributing
 
-Contributions are very welcome — especially this early, while the foundations are being poured. See **[CONTRIBUTING.md](CONTRIBUTING.md)**. In short: `main` is protected, so all changes come in via pull request, must pass CI, and follow [Conventional Commits](https://www.conventionalcommits.org). See **[CHANGELOG.md](CHANGELOG.md)** for what's landed.
-
-By participating you agree to our [Code of Conduct](CODE_OF_CONDUCT.md).
+Contributions are very welcome. See **[CONTRIBUTING.md](CONTRIBUTING.md)**. In short: `main` is protected, so all changes land via pull request (base `dev`), must pass CI, and follow [Conventional Commits](https://www.conventionalcommits.org). See **[CHANGELOG.md](CHANGELOG.md)** for what's shipped. By participating you agree to our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
@@ -205,3 +451,19 @@ By participating you agree to our [Code of Conduct](CODE_OF_CONDUCT.md).
 ## Acknowledgements
 
 Standing on the shoulders of [Charm](https://charm.sh) (Bubble Tea, Lip Gloss & Glamour), the [Model Context Protocol](https://modelcontextprotocol.io), and [lazygit](https://github.com/jesseduffield/lazygit) for the inspiration.
+
+---
+
+## Star history
+
+<div align="center">
+<a href="https://star-history.com/#03-CiprianoG/jeera&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=03-CiprianoG/jeera&type=Date&theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=03-CiprianoG/jeera&type=Date" />
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=03-CiprianoG/jeera&type=Date" width="80%" />
+  </picture>
+</a>
+</div>
+
+<div align="center"><sub>Built in the open with <a href="https://claude.com/claude-code">Claude Code</a>. If Jeera saves you a copy-paste, leave a ⭐.</sub></div>

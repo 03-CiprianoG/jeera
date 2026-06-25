@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -22,23 +23,21 @@ func (m Model) renderHelp() string {
 		col := lipgloss.JoinVertical(lipgloss.Left, lines...)
 		cols = append(cols, lipgloss.NewStyle().MarginRight(3).Render(col))
 	}
-	legend := t.HelpDesc.Render("⌥tab switches views · tab moves focus inside a view · ⇧+arrows move a ticket")
-	body := t.Title.Render("Keys") + "\n" + legend + "\n\n" + lipgloss.JoinHorizontal(lipgloss.Top, cols...)
-	body += "\n\n" + t.HelpDesc.Render("press any key to close")
-	return t.Modal.Render(body)
+	body := lipgloss.JoinHorizontal(lipgloss.Top, cols...)
+	return modalShell(t, modalWidthHelp, 0, "Keys",
+		"⌥tab switches views · tab moves focus inside a view · ⇧+arrows move a ticket",
+		body, modalHint(t, "press any key to close"))
 }
 
 // --- MCP ---------------------------------------------------------------------
 
 func (m Model) renderMCP() string {
 	t := m.theme
-	var b strings.Builder
-	b.WriteString(t.Title.Render("MCP server"))
-	b.WriteString("\n\n")
+	const sub = "The agent endpoint Jeera serves while the board is open."
 	if m.mcp == nil {
-		b.WriteString(t.HelpDesc.Render("Started with --no-mcp; the server is off."))
-		b.WriteString("\n\n" + t.HelpDesc.Render("press any key to close"))
-		return t.Modal.Render(b.String())
+		return modalShell(t, modalWidthMCP, 3, "MCP server", sub,
+			t.HelpDesc.Render("Started with --no-mcp; the server is off."),
+			modalHint(t, "press any key to close"))
 	}
 	st := m.mcp.Status()
 	status := "starting"
@@ -48,14 +47,14 @@ func (m Model) renderMCP() string {
 	case st.Listening:
 		status = "listening"
 	}
-	b.WriteString(t.Label.Render("Status") + "  " + t.StatusText.Render(status) + "\n")
-	b.WriteString(t.Label.Render("URL") + "     " + t.CardKey.Render(st.URL) + "\n\n")
-	b.WriteString(t.Label.Render("Connect with Claude Code:") + "\n")
+	var b strings.Builder
+	b.WriteString(t.Label.Render(fmt.Sprintf("%-8s", "Status")) + t.StatusText.Render(status) + "\n")
+	b.WriteString(t.Label.Render(fmt.Sprintf("%-8s", "URL")) + t.CardKey.Render(st.URL) + "\n\n")
+	b.WriteString(t.Label.Render("Connect with Claude Code") + "\n")
 	b.WriteString(t.StatusText.Render("claude mcp add --transport http jeera "+st.URL) + "\n\n")
-	b.WriteString(t.Label.Render("Or add to .mcp.json:") + "\n")
+	b.WriteString(t.Label.Render("Or add to .mcp.json") + "\n")
 	b.WriteString(t.StatusText.Render(m.mcp.ClientConfigJSON()))
-	b.WriteString("\n\n" + t.HelpDesc.Render("press any key to close"))
-	return t.Modal.Render(b.String())
+	return modalShell(t, modalWidthMCP, 0, "MCP server", sub, b.String(), modalHint(t, "press any key to close"))
 }
 
 // --- projects ----------------------------------------------------------------
@@ -121,11 +120,10 @@ func (m Model) updateProjects(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 func (m Model) renderConfirm() string {
 	t := m.theme
-	body := t.Title.Render("Confirm") + "\n\n" +
-		t.StatusText.Render(m.confirm) + "\n\n" +
-		t.HelpKey.Render("y") + " " + t.HelpDesc.Render("yes") + "   " +
+	body := t.StatusText.Render(m.confirm)
+	hint := t.HelpKey.Render("y") + " " + t.HelpDesc.Render("yes") + "   " +
 		t.HelpKey.Render("n") + " " + t.HelpDesc.Render("no")
-	return t.Modal.Render(body)
+	return modalShell(t, modalWidthConfirm, 2, "Confirm", "", body, hint)
 }
 
 func (m Model) updateConfirm(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {

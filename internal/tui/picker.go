@@ -71,17 +71,14 @@ func (m Model) updatePicker(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 }
 
 func (p *pickerModel) View(t theme.Theme) string {
-	var b strings.Builder
-	b.WriteString(t.Title.Render(p.title))
-	b.WriteString("\n\n")
 	if len(p.items) == 0 {
-		b.WriteString(t.HelpDesc.Render(p.empty))
-		b.WriteString("\n\n" + t.HelpDesc.Render("esc close"))
-		return t.Modal.Width(52).Render(b.String())
+		return modalShell(t, modalWidthList, 3, p.title, "", t.HelpDesc.Render(p.empty), modalHint(t, "esc close"))
 	}
-	// The modal is 52 wide: 2 border + 4 padding leaves 46 inner cells. Truncate
-	// each label to what's left after the cursor lead and the meta chip, so every
-	// item stays on one line and the cursor indent and meta stay column-aligned.
+	// The inner width is the modal width less its border (2) and padding (4).
+	// Truncate each label to what's left after the cursor lead and the meta chip,
+	// so every item stays on one line and the cursor indent and meta stay aligned.
+	const inner = modalWidthList - 6
+	var b strings.Builder
 	for i, it := range p.items {
 		cursor := "  "
 		labelStyle := t.StatusText
@@ -93,7 +90,7 @@ func (p *pickerModel) View(t theme.Theme) string {
 		if it.meta != "" {
 			metaW = lipgloss.Width(it.meta) + 2
 		}
-		labelW := 46 - 2 - metaW
+		labelW := inner - 2 - metaW
 		if labelW < 8 {
 			labelW = 8
 		}
@@ -101,10 +98,12 @@ func (p *pickerModel) View(t theme.Theme) string {
 		if it.meta != "" {
 			row += "  " + t.CardMeta.Render(it.meta)
 		}
-		b.WriteString(row + "\n")
+		if i > 0 {
+			b.WriteString("\n")
+		}
+		b.WriteString(row)
 	}
-	b.WriteString("\n" + t.HelpDesc.Render("↑/↓ select · enter choose · esc close"))
-	return t.Modal.Width(52).Render(b.String())
+	return modalShell(t, modalWidthList, 5, p.title, "", b.String(), modalHint(t, "↑/↓ select · enter choose · esc close"))
 }
 
 // openSprintPicker opens a chooser of the project's sprints; choosing one assigns

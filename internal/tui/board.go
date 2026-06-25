@@ -12,7 +12,7 @@ import (
 	"github.com/03-CiprianoG/jeera/internal/tui/theme"
 )
 
-const columnGutter = 1
+const columnGutter = 3
 
 // renderBoard draws the kanban columns (or an empty state) in a region exactly
 // `height` rows tall, so the footer stays pinned to the bottom.
@@ -34,7 +34,7 @@ func (m Model) renderBoard(height int) string {
 	blocks := make([]string, 0, n*2)
 	for i, col := range m.board.columns {
 		if i > 0 {
-			blocks = append(blocks, fitHeight(" ", height)) // gutter column
+			blocks = append(blocks, fitHeight(strings.Repeat(" ", columnGutter), height)) // gutter column
 		}
 		blocks = append(blocks, m.renderColumn(col, i, colW, height))
 	}

@@ -76,7 +76,7 @@ func newTextField(label, placeholder string, limit int) formField {
 	ti.Placeholder = placeholder
 	ti.CharLimit = limit
 	ti.Prompt = ""
-	ti.SetWidth(40)
+	ti.SetWidth(52)
 	return formField{label: label, ftype: fieldText, input: ti}
 }
 
@@ -85,7 +85,7 @@ func newDateField(label string) formField {
 	ti.Placeholder = "YYYY-MM-DD"
 	ti.CharLimit = 10
 	ti.Prompt = ""
-	ti.SetWidth(20)
+	ti.SetWidth(24)
 	return formField{label: label, ftype: fieldDate, input: ti}
 }
 
@@ -213,14 +213,8 @@ func (f *formModel) update(msg tea.Msg) tea.Cmd {
 }
 
 func (f *formModel) View(t theme.Theme) string {
-	const labelW = 12
-	var b strings.Builder
-	b.WriteString(t.Title.Render(f.heading))
-	if f.sub != "" {
-		b.WriteString("\n" + t.HelpDesc.Render(f.sub))
-	}
-	b.WriteString("\n\n")
-
+	const labelW = 14
+	rows := make([]string, 0, len(f.fields))
 	for i := range f.fields {
 		fld := &f.fields[i]
 		focused := f.focus == i
@@ -244,23 +238,19 @@ func (f *formModel) View(t theme.Theme) string {
 				vs = vs.Foreground(t.PriorityColor(p))
 				disp = theme.PriorityGlyph(p) + " " + disp
 			}
-			if focused {
-				ch := lipgloss.NewStyle().Foreground(t.P.FocusGlow)
-				control = ch.Render(iconChevL+" ") + vs.Render(disp) + ch.Render(" "+iconChevR)
-			} else {
-				control = "  " + vs.Render(disp)
-			}
+			control = cycler(t, disp, vs, focused)
 		default:
 			control = "  " + fld.input.View()
 		}
-		b.WriteString(label + control + "\n")
+		rows = append(rows, label+control)
 	}
 
-	b.WriteString("\n")
-	buttons := buttonRow(t, []string{f.submit, "Cancel"}, f.buttonFocus())
-	b.WriteString(buttons)
-	b.WriteString("\n\n" + t.HelpDesc.Render("enter "+strings.ToLower(f.submit)+" · tab next · ←/→ change · esc cancel"))
-	return t.Modal.Width(60).Render(b.String())
+	// Fields breathe a row apart, then the action row sits below its own gap — the
+	// extra air is what makes the bigger frame read as deliberate, not empty.
+	body := strings.Join(rows, "\n\n") +
+		"\n\n\n" + buttonRow(t, []string{f.submit, "Cancel"}, f.buttonFocus())
+	hint := modalHint(t, "enter "+strings.ToLower(f.submit)+" · tab next · ←/→ change · esc cancel")
+	return modalShell(t, modalWidthForm, 0, f.heading, f.sub, body, hint)
 }
 
 // buttonFocus maps the focus index to the focused button (0 submit, 1 cancel),

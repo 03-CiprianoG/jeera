@@ -16,18 +16,15 @@ func (m Model) renderNavbar() string {
 		{iconSprints, "Sprints"},
 		{iconRuns, "Runs"},
 	}
-	return navbar(m.theme, m.width, items, int(m.view))
+	return navbar(m.theme, m.width, items, int(m.view), brandLogo(m.theme))
 }
 
-// renderFooter is the bottom chrome — the identity bar Jeera used to wear up top,
-// moved down so the navbar can lead. The Jeera mark and active project sit on the
-// left, the live MCP "wire" and a single ? help affordance on the right, with any
-// transient toast or error riding just ahead of them.
+// renderFooter is the bottom chrome — the active project sits on the left, the
+// live MCP "wire" and a single ? help affordance on the right, with any
+// transient toast or error riding just ahead of them. The Jeera wordmark now
+// leads the header up top, so the footer no longer carries the brand.
 func (m Model) renderFooter() string {
 	t := m.theme
-	brand := lipgloss.NewStyle().
-		Foreground(t.P.BgBase).Background(t.P.Focus).Bold(true).
-		Padding(0, 1).Render("Jeera")
 	help := t.HelpKey.Render(iconHelp) + " " + t.HelpDesc.Render("help")
 
 	// The right cluster is the always-on identity: the live wire and the one help
@@ -40,13 +37,13 @@ func (m Model) renderFooter() string {
 
 	proj := t.HelpDesc.Render("no project yet")
 	if m.active.ID != 0 {
-		budget := m.width - 4 - lipgloss.Width(brand) - 1 - lipgloss.Width(core) - 1 - lipgloss.Width(m.active.KeyPrefix)
+		budget := m.width - 4 - lipgloss.Width(core) - 1 - lipgloss.Width(m.active.KeyPrefix)
 		if budget < 4 {
 			budget = 4
 		}
 		proj = t.StatusText.Render(truncate(m.active.Name, budget)) + " " + t.CardMeta.Render(m.active.KeyPrefix)
 	}
-	left := brand + " " + proj
+	left := proj
 
 	// Transient feedback rides just ahead of the core cluster — but only when it
 	// fits the gap, so a long error at a narrow width can never wrap the bar.

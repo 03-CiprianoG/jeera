@@ -29,7 +29,10 @@ func seedBoard(t *testing.T, m *Model) {
 	st.TransitionIssue(b.ID, statuses[1].ID) // In Progress
 
 	c, _ := st.CreateIssue(core.Issue{ProjectID: p.ID, Title: "Set up the project scaffold", Type: core.TypeTask, Priority: core.PriorityLow})
-	st.TransitionIssue(c.ID, statuses[2].ID) // Done
+	st.TransitionIssue(c.ID, statuses[3].ID) // Done
+
+	d, _ := st.CreateIssue(core.Issue{ProjectID: p.ID, Title: "Review the theme tokens", Type: core.TypeTask, Priority: core.PriorityMedium})
+	st.TransitionIssue(d.ID, statuses[2].ID) // In Review
 
 	m.reload()
 }

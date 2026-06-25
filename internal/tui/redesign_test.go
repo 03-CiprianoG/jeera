@@ -29,15 +29,15 @@ func TestBoardCursorReachesAddSlot(t *testing.T) {
 	}
 }
 
-func TestBoardAddSlotCreatesInThatColumn(t *testing.T) {
+func TestBoardAddSlotCreatesInTodo(t *testing.T) {
 	m, _ := newTestModel(t)
 	seedBoard(t, &m)
-	// In Progress is column 1 with one card → its add slot is cardIdx 1.
-	m.colIdx, m.cardIdx = 1, 1
+	// To Do is column 0 with two cards → its add slot is cardIdx 2.
+	m.colIdx, m.cardIdx = 0, 2
 	if !m.onAddCard() {
-		t.Fatalf("expected the add slot at col 1 / card 1")
+		t.Fatalf("expected the add slot at the To Do column")
 	}
-	wantStatus := m.board.columns[1].status.ID
+	wantStatus := m.board.columns[0].status.ID
 
 	next, _ := m.updateBoard(keyPress("enter"))
 	m = next.(Model)
@@ -45,21 +45,40 @@ func TestBoardAddSlotCreatesInThatColumn(t *testing.T) {
 		t.Fatalf("enter on the add slot should open the create form")
 	}
 	if m.form.statusID != wantStatus {
-		t.Errorf("form should target the column status %d, got %d", wantStatus, m.form.statusID)
+		t.Errorf("form should target the To Do status %d, got %d", wantStatus, m.form.statusID)
 	}
 
-	m.form.fields[0].SetValue("Born in progress")
+	m.form.fields[0].SetValue("Born in to do")
 	next, _ = m.submitForm()
 	m = next.(Model)
 
 	found := false
-	for _, c := range m.board.columns[1].cards {
-		if c.Title == "Born in progress" {
+	for _, c := range m.board.columns[0].cards {
+		if c.Title == "Born in to do" {
 			found = true
 		}
 	}
 	if !found {
-		t.Error("the new issue should land in the targeted column")
+		t.Error("the new issue should land in the To Do column")
+	}
+}
+
+// The "+ New issue" affordance is exclusive to To Do: downstream lanes expose no
+// add slot, and the cursor clamps to their last real card.
+func TestBoardAddSlotOnlyOnTodo(t *testing.T) {
+	m, _ := newTestModel(t)
+	seedBoard(t, &m) // In Progress (column 1) holds one card and no add slot.
+	m.colIdx, m.cardIdx = 1, 0
+
+	for i := 0; i < 5; i++ { // walking down can't reach an add slot here
+		next, _ := m.updateBoard(keyPress("j"))
+		m = next.(Model)
+	}
+	if m.onAddCard() {
+		t.Error("a non-To Do column should not expose an add slot")
+	}
+	if m.cardIdx != 0 {
+		t.Errorf("cursor should clamp to the lane's single card (index 0), got %d", m.cardIdx)
 	}
 }
 

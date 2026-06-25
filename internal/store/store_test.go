@@ -55,7 +55,7 @@ func TestProjectLifecycle(t *testing.T) {
 		t.Fatalf("expected normalized prefix JEE with id, got %+v", p)
 	}
 
-	// A new project must be seeded with the three default board columns.
+	// A new project must be seeded with the default board columns.
 	statuses, err := s.ListStatuses(p.ID)
 	if err != nil {
 		t.Fatalf("ListStatuses: %v", err)
@@ -86,6 +86,33 @@ func TestProjectLifecycle(t *testing.T) {
 	list, _ := s.ListProjects()
 	if len(list) != 1 {
 		t.Errorf("expected 1 project, got %d", len(list))
+	}
+}
+
+// TestDefaultStatusesBoard pins the seeded board: a four-lane
+// To Do → In Progress → In Review → Done flow, with In Review its own
+// review-category lane positioned just before Done.
+func TestDefaultStatusesBoard(t *testing.T) {
+	want := []struct {
+		name string
+		cat  core.StatusCategory
+	}{
+		{"To Do", core.CategoryTodo},
+		{"In Progress", core.CategoryInProgress},
+		{"In Review", core.CategoryReview},
+		{"Done", core.CategoryDone},
+	}
+	got := DefaultStatuses()
+	if len(got) != len(want) {
+		t.Fatalf("DefaultStatuses() has %d lanes, want %d", len(got), len(want))
+	}
+	for i, w := range want {
+		if got[i].Name != w.name || got[i].Category != w.cat {
+			t.Errorf("lane %d = %q/%q, want %q/%q", i, got[i].Name, got[i].Category, w.name, w.cat)
+		}
+		if got[i].Position != i {
+			t.Errorf("lane %d (%q) position = %d, want %d", i, got[i].Name, got[i].Position, i)
+		}
 	}
 }
 

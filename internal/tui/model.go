@@ -269,9 +269,12 @@ func (m *Model) clampSelection() {
 	if m.colIdx < 0 {
 		m.colIdx = 0
 	}
-	// cardIdx ranges 0..n, where n (one past the last card) is the column's
-	// "+ New issue" slot — always selectable, so an empty column still offers it.
+	// cardIdx ranges 0..n: on the To Do column n (one past the last card) is the
+	// "+ New issue" slot. Columns without that slot clamp to their last real card.
 	n := len(m.board.columns[m.colIdx].cards)
+	if !m.columnHasAddCard(m.colIdx) && n > 0 {
+		n--
+	}
 	if m.cardIdx > n {
 		m.cardIdx = n
 	}

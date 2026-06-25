@@ -20,21 +20,20 @@ import (
 // Icons are a small, deliberately geometric set. Every glyph here is one display
 // cell wide (verified against the width table), so layout math never drifts.
 const (
-	iconBoard    = "▦"
-	iconBacklog  = "≡"
-	iconSprints  = "◴"
-	iconRuns     = "▶"
-	iconHelp     = "?"
-	iconAdd      = "+"
-	iconEdit     = "✎"
-	iconRun      = "▶"
-	iconChildren = "⑂"
-	iconDiscuss  = "✦"
-	iconClock    = "⏱"
-	iconLink     = "↗"
-	iconClip     = "◌"
-	iconChevL    = "◀"
-	iconChevR    = "▶"
+	iconBoard   = "▦"
+	iconBacklog = "≡"
+	iconSprints = "◴"
+	iconRuns    = "▶"
+	iconHelp    = "?"
+	iconAdd     = "+"
+	iconEdit    = "✎"
+	iconRun     = "▶"
+	iconDiscuss = "✦"
+	iconClock   = "⏱"
+	iconLink    = "↗"
+	iconClip    = "◌"
+	iconChevL   = "◀"
+	iconChevR   = "▶"
 )
 
 // --- navbar ------------------------------------------------------------------

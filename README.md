@@ -4,7 +4,7 @@
 
 **Agentic-first issue tracking that lives in your terminal.**
 
-A [lazygit](https://github.com/jesseduffield/lazygit)-inspired TUI that reimagines Jira for the age of AI agents — with a built-in [MCP](https://modelcontextprotocol.io) server so your agents always know about your tickets, and a one-key **Start** that puts those agents to work on them.
+A [lazygit](https://github.com/jesseduffield/lazygit)-inspired TUI that reimagines issue tracking for the age of AI agents — with a built-in [MCP](https://modelcontextprotocol.io) server so your agents always know about your tickets, and a one-key **Start** that puts those agents to work on them.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![CI](https://github.com/03-CiprianoG/jeera/actions/workflows/ci.yml/badge.svg)](https://github.com/03-CiprianoG/jeera/actions/workflows/ci.yml)
@@ -36,13 +36,13 @@ Most tools bolt a chat box onto a GUI. Jeera inverts that. The agent isn't a fea
 
 > Legend: ✅ available · 🔭 in progress · 🔜 planned
 
-### Jira, reimagined for the terminal
+### Issue tracking, reimagined for the terminal
 
 | Feature | Status | Notes |
 |---|:---:|---|
 | **Projects** bound to a git repo | ✅ | Each project points at a repository (set on create); switch between many |
 | **Issues** — epics, stories, tasks, bugs, subtasks | ✅ | Per-project keys (`JEE-12`), Markdown descriptions |
-| **Statuses** & a configurable board | ✅ | Named columns grouped into To Do / In Progress / Done lanes |
+| **Statuses** & a configurable board | ✅ | Named columns grouped into To Do / In Progress / In Review / Done lanes |
 | **Priority**, **story points**, **tags** | ✅ | Five priority levels, point estimates, project-scoped labels |
 | **Sprints** | ✅ | Time-boxed, future/active/completed, backlog ↔ sprint |
 | **Relationships** | ✅ | blocks / blocked-by / relates / duplicates, shown from both sides |
@@ -184,7 +184,7 @@ Released under semantic versioning; each milestone is one or more pull requests.
 - [x] **Foundation** — domain model + local SQLite store
 - [x] **MCP server** — 16 typed tools over the shared store
 - [x] **v0.1.0** — design system + Kanban board (first runnable release)
-- [x] **v0.2.0** — ticket detail view: rich-text editing + all Jira fields + comments
+- [x] **v0.2.0** — ticket detail view: rich-text editing + all the issue fields you'd expect + comments
 - [x] **v0.3.0** — execution engine: Start / worktrees / runs / versioning
 - [x] **v0.4.0** — scheduling: cron a ticket to run itself, persisted and headless
 - [x] **v0.5.0** — settings: global → project → ticket config cascade, project repo paths

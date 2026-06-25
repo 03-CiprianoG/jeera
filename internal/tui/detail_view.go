@@ -303,6 +303,8 @@ func (d *detailModel) agentBody(L dlayout) string {
 		"",
 	}
 
+	// Run is the primary action and sits alone on the first row; Discuss and
+	// Schedule are the secondary pair beneath it.
 	btn := -1
 	if focused && d.agentSel >= agRun {
 		btn = d.agentSel - agRun
@@ -312,14 +314,12 @@ func (d *detailModel) agentBody(L dlayout) string {
 	case 0:
 		row1Focus = 0
 	case 1:
-		row1Focus = 1
-	case 2:
 		row2Focus = 0
-	case 3:
+	case 2:
 		row2Focus = 1
 	}
 	lines = append(lines,
-		buttonRow(t, []string{iconRun + " Run", iconChildren + " Children"}, row1Focus),
+		buttonRow(t, []string{iconRun + " Run"}, row1Focus),
 		buttonRow(t, []string{iconDiscuss + " Discuss", iconClock + " Schedule"}, row2Focus),
 	)
 

@@ -268,14 +268,6 @@ func TestDetailOpenNoAttachments(t *testing.T) {
 	}
 }
 
-func TestDetailStartWithChildrenNeedsRunMgr(t *testing.T) {
-	d, _, _ := newDetailForTest(t) // no run manager
-	d.startWithChildren()
-	if d.err == "" {
-		t.Error("start-with-children without a run manager should surface an error")
-	}
-}
-
 func TestDetailDiscussNoMCPNoCommand(t *testing.T) {
 	st, err := store.Open(t.TempDir() + "/jeera.db")
 	if err != nil {

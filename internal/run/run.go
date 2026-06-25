@@ -104,114 +104,6 @@ func (m *Manager) Start(issue core.Issue) (core.Run, error) {
 	return pl.run, nil
 }
 
-// StartWithChildren runs the issue's child issues first — in dependency order, so
-// a blocker runs before what it blocks — and then the issue itself, each run
-// finishing before the next begins. It returns immediately; the sequence runs in
-// the background. (An issue with no children behaves like Start, just sequenced.)
-func (m *Manager) StartWithChildren(issue core.Issue) error {
-	seq, err := m.childrenThenSelf(issue)
-	if err != nil {
-		return err
-	}
-	m.wg.Add(1)
-	go func() {
-		defer m.wg.Done()
-		for _, iss := range seq {
-			if m.ctx.Err() != nil {
-				return // Shutdown: don't start the remaining children
-			}
-			m.runOne(iss)
-		}
-	}()
-	return nil
-}
-
-// runOne prepares, tracks and executes a single run synchronously — used by the
-// sequenced StartWithChildren so each run completes before the next starts.
-func (m *Manager) runOne(issue core.Issue) {
-	pl, err := m.prepare(issue)
-	if err != nil {
-		return
-	}
-	m.mu.Lock()
-	m.cancels[pl.run.ID] = pl.cancel
-	m.mu.Unlock()
-	m.execute(pl)
-}
-
-// childrenThenSelf returns the issue's children in dependency order followed by
-// the issue itself.
-func (m *Manager) childrenThenSelf(issue core.Issue) ([]core.Issue, error) {
-	kids, err := m.store.ListIssues(store.IssueFilter{ParentID: &issue.ID})
-	if err != nil {
-		return nil, err
-	}
-	return append(m.dependencyOrder(kids), issue), nil
-}
-
-// dependencyOrder topologically sorts issues so a blocker precedes the issues it
-// blocks, breaking ties by the input order. Edges come from each issue's
-// "blocked_by" links to others in the set (each relationship is stored once, so
-// reading one perspective avoids double-counting). A dependency cycle degrades
-// gracefully: the unresolved issues are appended in input order.
-func (m *Manager) dependencyOrder(issues []core.Issue) []core.Issue {
-	if len(issues) < 2 {
-		return issues
-	}
-	byID := make(map[int64]core.Issue, len(issues))
-	indeg := make(map[int64]int, len(issues))
-	for _, is := range issues {
-		byID[is.ID] = is
-		indeg[is.ID] = 0
-	}
-	blocks := make(map[int64][]int64) // blocker id -> ids it blocks (within the set)
-	for _, is := range issues {
-		links, err := m.store.ListLinks(is.ID)
-		if err != nil {
-			continue
-		}
-		for _, l := range links {
-			if l.Type != core.LinkBlockedBy {
-				continue // count each relationship once, from the blocked side
-			}
-			if _, ok := byID[l.Issue.ID]; !ok {
-				continue // blocker isn't part of this run set
-			}
-			blocks[l.Issue.ID] = append(blocks[l.Issue.ID], is.ID)
-			indeg[is.ID]++
-		}
-	}
-
-	var queue []int64
-	for _, is := range issues { // seed in input order for stable ties
-		if indeg[is.ID] == 0 {
-			queue = append(queue, is.ID)
-		}
-	}
-	out := make([]core.Issue, 0, len(issues))
-	seen := make(map[int64]bool, len(issues))
-	for len(queue) > 0 {
-		n := queue[0]
-		queue = queue[1:]
-		if seen[n] {
-			continue
-		}
-		seen[n] = true
-		out = append(out, byID[n])
-		for _, blocked := range blocks[n] {
-			if indeg[blocked]--; indeg[blocked] == 0 {
-				queue = append(queue, blocked)
-			}
-		}
-	}
-	for _, is := range issues { // anything left is in a cycle — keep input order
-		if !seen[is.ID] {
-			out = append(out, is)
-		}
-	}
-	return out
-}
-
 // DiscussCommand builds the interactive "Expand / Discuss" command: an
 // interactive claude session with Jeera's MCP attached and a preloaded prompt to
 // open the ticket for a conversation rather than autonomous work. It is the raw
@@ -419,8 +311,7 @@ func (m *Manager) launch(pl *plan) {
 
 // execute runs a prepared plan to completion (blocking), streaming its output to
 // the log and updating the run as the session id arrives and when it finishes. It
-// owns the per-run cancel cleanup. Sequenced callers (Start-with-children) invoke
-// it directly so each run finishes before the next begins.
+// owns the per-run cancel cleanup.
 func (m *Manager) execute(pl *plan) {
 	defer func() {
 		m.mu.Lock()

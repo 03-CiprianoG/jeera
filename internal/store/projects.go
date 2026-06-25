@@ -16,7 +16,8 @@ func DefaultStatuses() []core.Status {
 	return []core.Status{
 		{Name: "To Do", Category: core.CategoryTodo, Position: 0},
 		{Name: "In Progress", Category: core.CategoryInProgress, Position: 1},
-		{Name: "Done", Category: core.CategoryDone, Position: 2},
+		{Name: "In Review", Category: core.CategoryReview, Position: 2},
+		{Name: "Done", Category: core.CategoryDone, Position: 3},
 	}
 }
 

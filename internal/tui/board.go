@@ -66,10 +66,13 @@ func (m Model) renderColumn(col column, idx, colW, height int) string {
 		selected := idx == m.colIdx && ci == m.cardIdx
 		lines = append(lines, m.renderCard(iss, selected, colW))
 	}
-	// The "+ New issue" affordance is the slot one past the last card: a ghost
-	// card that doubles as the empty state and the create action for this column.
-	addSel := idx == m.colIdx && m.cardIdx == len(col.cards)
-	lines = append(lines, m.renderAddCard(colW, addSel))
+	// The "+ New issue" affordance is the slot one past the last card on the To Do
+	// column — new work enters the board there, so the downstream lanes stay free
+	// of a create action that never made sense on them.
+	if m.columnHasAddCard(idx) {
+		addSel := idx == m.colIdx && m.cardIdx == len(col.cards)
+		lines = append(lines, m.renderAddCard(colW, addSel))
+	}
 	col2 := lipgloss.JoinVertical(lipgloss.Left, lines...)
 	return fitHeight(col2, height)
 }
@@ -96,10 +99,18 @@ func (m Model) renderAddCard(colW int, selected bool) string {
 		Render(iconAdd + " New issue")
 }
 
+// columnHasAddCard reports whether a column shows the "+ New issue" affordance.
+// Only To Do (todo-category) columns do: new work enters the board there, so the
+// downstream lanes never carry a create action that didn't belong on them.
+func (m Model) columnHasAddCard(idx int) bool {
+	return idx >= 0 && idx < len(m.board.columns) &&
+		m.board.columns[idx].status.Category == core.CategoryTodo
+}
+
 // onAddCard reports whether the board cursor is on a column's "+ New issue" slot
 // rather than a real card.
 func (m Model) onAddCard() bool {
-	if m.colIdx < 0 || m.colIdx >= len(m.board.columns) {
+	if !m.columnHasAddCard(m.colIdx) {
 		return false
 	}
 	return m.cardIdx == len(m.board.columns[m.colIdx].cards)
@@ -181,8 +192,8 @@ func (m Model) handleGlobalKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
 
 // updateBoard handles the board's deliberately small keyset: arrows to move the
 // cursor, ⇧+arrows to move the selected ticket across columns, e/x/enter to
-// rename/delete/open. Creating is a button (the column's "+ New issue" slot),
-// not a keystroke. The global keys are intercepted earlier by handleGlobalKey.
+// rename/delete/open. Creating is a button (the To Do column's "+ New issue"
+// slot), not a keystroke. The global keys are intercepted earlier by handleGlobalKey.
 func (m Model) updateBoard(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// Welcome screen (no project yet): the only move is creating the first
 	// project, offered as the focused button — enter (or n) starts it.

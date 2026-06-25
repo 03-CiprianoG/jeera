@@ -61,7 +61,7 @@ type IssueSettings struct {
 
 // Issue is a single work item: an epic, story, task, bug or subtask. Title and
 // Description (Markdown) are the human-facing body; the remaining fields drive
-// the board, the Jira-style relationships and Jeera's execution model.
+// the board, the issue relationships and Jeera's execution model.
 type Issue struct {
 	ID          int64
 	ProjectID   int64

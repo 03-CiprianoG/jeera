@@ -24,8 +24,8 @@ func TestReloadGroupsIssuesByColumn(t *testing.T) {
 	if m.active.ID != p.ID {
 		t.Fatalf("active project not selected: %+v", m.active)
 	}
-	if len(m.board.columns) != 3 {
-		t.Fatalf("expected 3 columns, got %d", len(m.board.columns))
+	if len(m.board.columns) != 4 {
+		t.Fatalf("expected 4 columns, got %d", len(m.board.columns))
 	}
 	if got := len(m.board.columns[0].cards); got != 2 {
 		t.Errorf("expected 2 cards in first column, got %d", got)

@@ -59,7 +59,8 @@ func (e Effort) Valid() bool {
 	return false
 }
 
-// IssueType is the kind of work item, mirroring Jira's hierarchy.
+// IssueType is the kind of work item, following the familiar
+// epic → story → task hierarchy.
 type IssueType string
 
 const (
@@ -121,26 +122,27 @@ func (p Priority) Rank() int {
 	return -1
 }
 
-// StatusCategory groups a project's statuses into the three board lanes. A
-// project may have many named statuses, but each maps to one category so the
-// board, progress counts and the agent run-prompt have a stable vocabulary.
+// StatusCategory groups a project's statuses into the board lanes. A project may
+// have many named statuses, but each maps to one category so the board, progress
+// counts and the agent run-prompt have a stable vocabulary.
 type StatusCategory string
 
 const (
 	CategoryTodo       StatusCategory = "todo"
 	CategoryInProgress StatusCategory = "inprogress"
+	CategoryReview     StatusCategory = "review"
 	CategoryDone       StatusCategory = "done"
 )
 
 // StatusCategories lists the lanes left-to-right as they appear on the board.
 func StatusCategories() []StatusCategory {
-	return []StatusCategory{CategoryTodo, CategoryInProgress, CategoryDone}
+	return []StatusCategory{CategoryTodo, CategoryInProgress, CategoryReview, CategoryDone}
 }
 
 // Valid reports whether c is a known status category.
 func (c StatusCategory) Valid() bool {
 	switch c {
-	case CategoryTodo, CategoryInProgress, CategoryDone:
+	case CategoryTodo, CategoryInProgress, CategoryReview, CategoryDone:
 		return true
 	}
 	return false

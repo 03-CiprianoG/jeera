@@ -201,8 +201,8 @@ func TestCreateProjectTool(t *testing.T) {
 	if p.KeyPrefix != "WEB" || p.RepoPath != "/tmp/web" {
 		t.Errorf("project = %+v", p)
 	}
-	if len(p.Statuses) != 3 {
-		t.Errorf("new project should be seeded with 3 columns, got %d", len(p.Statuses))
+	if len(p.Statuses) != 4 {
+		t.Errorf("new project should be seeded with 4 columns, got %d", len(p.Statuses))
 	}
 	// Issues can be created in the new project immediately.
 	iss := mustCreate(t, svc, CreateIssueArgs{Project: "WEB", Title: "first"})
@@ -221,7 +221,7 @@ func TestProjectsTools(t *testing.T) {
 	if err != nil {
 		t.Fatalf("get_project: %v", err)
 	}
-	if len(p.Statuses) != 3 || p.Statuses[0].Name != "To Do" {
+	if len(p.Statuses) != 4 || p.Statuses[0].Name != "To Do" {
 		t.Errorf("project statuses = %+v", p.Statuses)
 	}
 }

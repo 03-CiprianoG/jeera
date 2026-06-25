@@ -162,6 +162,8 @@ func (t Theme) CategoryColor(c core.StatusCategory) color.Color {
 	switch c {
 	case core.CategoryInProgress:
 		return t.P.Warning
+	case core.CategoryReview:
+		return t.P.Info
 	case core.CategoryDone:
 		return t.P.Success
 	default: // todo

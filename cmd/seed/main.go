@@ -114,12 +114,7 @@ func (s *seeder) run(dbPath string) {
 	})
 	check(err)
 
-	// CreateProject seeds To Do / In Progress / Done. Add a second in-progress
-	// column to show that a category can hold several named statuses. Position 1
-	// ties with "In Progress" but sorts after it (higher id) and before "Done".
-	_, err = s.st.CreateStatus(core.Status{ProjectID: proj.ID, Name: "In Review", Category: core.CategoryInProgress, Position: 1})
-	check(err)
-
+	// CreateProject seeds the default board: To Do / In Progress / In Review / Done.
 	todo := s.status(proj.ID, "To Do")
 	inProgress := s.status(proj.ID, "In Progress")
 	inReview := s.status(proj.ID, "In Review")
@@ -352,7 +347,7 @@ func (s *seeder) run(dbPath string) {
 	})
 
 	// --- schedules -----------------------------------------------------------
-	s.schedule(kafka.ID, "0 9 * * *", false, true, s.nextAt(9))                // daily 09:00
+	s.schedule(kafka.ID, "0 9 * * *", false, true, s.nextAt(9))                  // daily 09:00
 	s.schedule(audit.ID, "0 6 * * 1", true, true, s.days(7).Truncate(time.Hour)) // weekly, with children
 
 	// --- flagship ticket: a showcase of rich Markdown + mixed attachments ----

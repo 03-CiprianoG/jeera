@@ -81,7 +81,7 @@ func TestDumpComponents(t *testing.T) {
 	t.Log("\n" + navbar(th, 80, items, 2))
 	body := "Status    ◀ In Progress ▶\nType      Task\nPriority  ▲ High\nPoints    5\nSprint    Sprint 3\nTags      #ui #infra"
 	t.Log("\n" + panel(th, panelOpts{title: "Properties", body: body, width: 36, height: 9, focused: true}))
-	t.Log("\n" + panel(th, panelOpts{title: "Agent", body: "claude · opus · high\n\n" + buttonRow(th, []string{iconRun + " Run", iconChildren + " +children", "Discuss"}, 0), width: 44, height: 6, focused: false}))
+	t.Log("\n" + panel(th, panelOpts{title: "Agent", body: "claude · opus · high\n\n" + buttonRow(th, []string{iconRun + " Run", iconDiscuss + " Discuss", iconClock + " Schedule"}, 0), width: 44, height: 6, focused: false}))
 	left := []cell{cText("● "), cFg("▲ ", th.P.Danger), cKey("JEE-12   ", th.P.Focus), cText("Fix the card overflow on narrow widths")}
 	t.Log("\n" + listRow(th, 70, true, left, []cell{cText("5pt")}) + "\n" + listRow(th, 70, false, left, []cell{cText("3pt")}))
 }

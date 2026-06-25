@@ -75,14 +75,13 @@ func propertyFields() []detailField {
 }
 
 // The Agent panel's rows: the assignee triple, the worktree toggle, then the
-// four action buttons. agentSel indexes this list.
+// three action buttons. agentSel indexes this list.
 const (
 	agProvider = iota
 	agModel
 	agEffort
 	agWorktree
 	agRun
-	agChildren
 	agDiscuss
 	agSchedule
 	agRowCount
@@ -331,8 +330,6 @@ func (d *detailModel) keyAgent(k tea.KeyPressMsg) (tea.Cmd, bool) {
 			d.toggleWorktree()
 		case agRun:
 			d.startRun()
-		case agChildren:
-			d.startWithChildren()
 		case agDiscuss:
 			return d.discuss(), false
 		case agSchedule:
@@ -400,21 +397,6 @@ func (d *detailModel) unschedule() {
 		return
 	}
 	if err := d.sched.Remove(d.schedules[0].ID); err != nil {
-		d.err = err.Error()
-		return
-	}
-	d.err = ""
-	d.reload()
-}
-
-// startWithChildren runs this ticket's children in dependency order, then the
-// ticket itself.
-func (d *detailModel) startWithChildren() {
-	if d.runMgr == nil {
-		d.err = "run manager unavailable"
-		return
-	}
-	if err := d.runMgr.StartWithChildren(d.issue); err != nil {
 		d.err = err.Error()
 		return
 	}

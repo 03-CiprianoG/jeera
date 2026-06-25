@@ -3,7 +3,7 @@
 Guidance for Claude Code working in this repository. Keep it accurate and concise.
 
 ## What Jeera is
-An agentic-first, terminal-native issue tracker — think *lazygit for Jira*. It is **local-first** and the **system of record**: Jeera owns issues in a local store on the user's machine.
+An agentic-first, terminal-native issue tracker — think *lazygit for issue tracking*. It is **local-first** and the **system of record**: Jeera owns issues in a local store on the user's machine.
 
 ## How it runs (important)
 Running **`jeera`** starts **both** in a single process:

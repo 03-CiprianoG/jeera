@@ -11,6 +11,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/03-CiprianoG/jeera/internal/config"
 	"github.com/03-CiprianoG/jeera/internal/core"
 	"github.com/03-CiprianoG/jeera/internal/store"
 )
@@ -29,7 +30,11 @@ func newTestModel(t *testing.T) (Model, *store.Store) {
 		t.Fatalf("store.Open: %v", err)
 	}
 	t.Cleanup(func() { _ = st.Close() })
-	m := New(st, nil, nil, nil, nil)
+	// A temp config keeps tests hermetic — they never read or write the user's real
+	// config, so renders that depend on it (the default-project chip) stay
+	// deterministic regardless of the machine running them.
+	cfg, _ := config.NewStore(filepath.Join(t.TempDir(), "config.toml"))
+	m := New(st, nil, nil, nil, cfg)
 	m.width, m.height = 100, 30
 	return m, st
 }

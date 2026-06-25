@@ -111,6 +111,14 @@ func New(st *store.Store, mcpSrv *mcp.Server, mgr *run.Manager, sched *schedule.
 		theme:  theme.New(),
 		keys:   newKeyMap(),
 	}
+	// Open on the project the user pinned as default, when one is set and still
+	// exists. reload() keeps any non-zero active project it finds, and falls back
+	// to the oldest project on its own when the pin is stale or unset.
+	if prefix := cfg.Get().DefaultProjectPrefix; prefix != "" {
+		if p, err := st.GetProjectByPrefix(prefix); err == nil {
+			m.active = p
+		}
+	}
 	m.reload()
 	return m
 }

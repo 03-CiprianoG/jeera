@@ -77,3 +77,23 @@ func TestGoldenProjects(t *testing.T) {
 	m.mode = modeProjects
 	goldenFile(t, "projects", render(m))
 }
+
+// TestGoldenProjectsDefault covers the default-project chip: the seeded project is
+// both the active one and the pinned default, so it wears both chips.
+func TestGoldenProjectsDefault(t *testing.T) {
+	m, _ := newTestModel(t)
+	seedBoard(t, &m)
+	if err := m.cfg.SetDefaultProject("JEE"); err != nil {
+		t.Fatal(err)
+	}
+	m.mode = modeProjects
+	goldenFile(t, "projects_default", render(m))
+}
+
+func TestGoldenEditProjectForm(t *testing.T) {
+	m, _ := newTestModel(t)
+	seedBoard(t, &m)
+	m.form = newEditProjectForm(m.active)
+	m.mode = modeForm
+	goldenFile(t, "form_edit_project", render(m))
+}

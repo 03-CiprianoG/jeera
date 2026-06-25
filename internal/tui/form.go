@@ -19,6 +19,7 @@ type formKind int
 const (
 	formCreateIssue formKind = iota
 	formCreateProject
+	formEditProject
 	formRename
 	formCreateSprint
 )
@@ -61,14 +62,15 @@ func (f formField) value() string {
 // buttons (Create/Save, Cancel); choice fields cycle with ←/→, text fields edit
 // in place, and Enter submits from anywhere but the Cancel button.
 type formModel struct {
-	kind     formKind
-	heading  string
-	sub      string
-	submit   string // the primary button's label ("Create" / "Save")
-	fields   []formField
-	focus    int
-	issueID  int64 // target for formRename
-	statusID int64 // target column for a new issue (0 → the project's first status)
+	kind      formKind
+	heading   string
+	sub       string
+	submit    string // the primary button's label ("Create" / "Save")
+	fields    []formField
+	focus     int
+	issueID   int64 // target for formRename
+	projectID int64 // target for formEditProject
+	statusID  int64 // target column for a new issue (0 → the project's first status)
 }
 
 func newTextField(label, placeholder string, limit int) formField {
@@ -148,6 +150,24 @@ func newCreateProjectForm() *formModel {
 			newTextField("Key", "KEY, e.g. JEE", 10),
 			repo,
 		},
+	}
+}
+
+// newEditProjectForm edits a project's mutable fields, pre-filled with its
+// current values. The key prefix is deliberately absent: issue keys depend on it,
+// so the store treats it as immutable — only the name and repo path can change.
+func newEditProjectForm(p core.Project) *formModel {
+	name := newTextField("Name", "Project name", 80)
+	name.input.SetValue(p.Name)
+	repo := newTextField("Repo path", "/path/to/repo", 300)
+	repo.input.SetValue(p.RepoPath)
+	return &formModel{
+		kind:      formEditProject,
+		heading:   "Edit " + p.KeyPrefix,
+		sub:       "Rename it or change its repo path.",
+		submit:    "Save",
+		fields:    []formField{name, repo},
+		projectID: p.ID,
 	}
 }
 
@@ -332,6 +352,22 @@ func (m Model) submitForm() (tea.Model, tea.Cmd) {
 		m.active = p
 		m.closeForm()
 		return m, toast("created project " + p.KeyPrefix)
+
+	case formEditProject:
+		p, err := m.store.GetProject(f.projectID)
+		if err != nil {
+			return m, reportErr(err)
+		}
+		// Carry the name and repo path over the loaded project so its prefix and
+		// defaults are preserved; Validate (in UpdateProject) rejects an empty name
+		// or repo path and keeps the form open with the message.
+		p.Name = f.fields[0].value()
+		p.RepoPath = f.fields[1].value()
+		if err := m.store.UpdateProject(p); err != nil {
+			return m, reportErr(err)
+		}
+		m.closeForm()
+		return m, toast("updated " + p.KeyPrefix)
 
 	case formCreateIssue:
 		if f.fields[0].value() == "" {

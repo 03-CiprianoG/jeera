@@ -72,6 +72,10 @@ func keyPress(s string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: tea.KeyRight}
 	case "backspace":
 		return tea.KeyPressMsg{Code: tea.KeyBackspace}
+	case "/":
+		return tea.KeyPressMsg{Code: '/', Text: "/"}
+	case "super+f": // ⌘F
+		return tea.KeyPressMsg{Code: 'f', Mod: tea.ModSuper}
 	}
 	return tea.KeyPressMsg{Code: []rune(s)[0], Text: s}
 }

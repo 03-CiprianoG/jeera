@@ -14,11 +14,11 @@
  │  ────────────────────────────────────────────────────────────────────────────────────────────  │ 
  │                                                                                                │ 
  │  ⌥tab     next view     enter    open          n        new            p        projects       │ 
- │  ⌥⇧tab    prev view     e        rename        a        assign         m        mcp            │ 
- │  ↑        up            x        delete        s        start/finish   ,        settings       │ 
- │  ↓        down          ⇧←       move ticket   t        resume         r        refresh        │ 
- │  ←        prev column   ⇧→       move ticket   w        watch          ?        help           │ 
- │  →        next column                                                  q        quit           │ 
+ │  ⌥⇧tab    prev view     ⌘f /     search        a        assign         m        mcp            │ 
+ │  ↑        up            e        rename        s        start/finish   ,        settings       │ 
+ │  ↓        down          x        delete        t        resume         r        refresh        │ 
+ │  ←        prev column   ⇧←       move ticket   w        watch          ?        help           │ 
+ │  →        next column   ⇧→       move ticket                           q        quit           │ 
  │                                                                                                │ 
  │  ────────────────────────────────────────────────────────────────────────────────────────────  │ 
  │  press any key to close                                                                        │ 

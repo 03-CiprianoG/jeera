@@ -15,7 +15,9 @@ import (
 const columnGutter = 3
 
 // renderBoard draws the kanban columns (or an empty state) in a region exactly
-// `height` rows tall, so the footer stays pinned to the bottom.
+// `height` rows tall, so the footer stays pinned to the bottom. While a search
+// is live it heads the columns with a filter header — the same one the Backlog
+// wears — or shows a dead-end when nothing matches.
 func (m Model) renderBoard(height int) string {
 	t := m.theme
 	if m.active.ID == 0 {
@@ -25,6 +27,20 @@ func (m Model) renderBoard(height int) string {
 		return m.center(t.Empty.Render("This project has no columns."), height)
 	}
 
+	if m.boardQuery != "" {
+		matched := countCards(m.board)
+		if matched == 0 {
+			return m.center(m.searchEmpty(m.boardQuery), height)
+		}
+		header := filterHeader(t, "Board", m.boardQuery, matched, m.boardTotal, m.width)
+		return fitHeight(lipgloss.JoinVertical(lipgloss.Left, header, "", m.renderColumns(max(0, height-2))), height)
+	}
+	return m.renderColumns(height)
+}
+
+// renderColumns lays the kanban lanes side by side in a region exactly `height`
+// rows tall.
+func (m Model) renderColumns(height int) string {
 	n := len(m.board.columns)
 	colW := (m.width - (n-1)*columnGutter) / n
 	if colW < 16 {
@@ -101,9 +117,11 @@ func (m Model) renderAddCard(colW int, selected bool) string {
 
 // columnHasAddCard reports whether a column shows the "+ New issue" affordance.
 // Only To Do (todo-category) columns do: new work enters the board there, so the
-// downstream lanes never carry a create action that didn't belong on them.
+// downstream lanes never carry a create action that didn't belong on them. It is
+// hidden while a search is live — a filtered board is for finding, not creating,
+// and a fresh issue would likely fall outside the filter and vanish.
 func (m Model) columnHasAddCard(idx int) bool {
-	return idx >= 0 && idx < len(m.board.columns) &&
+	return m.boardQuery == "" && idx >= 0 && idx < len(m.board.columns) &&
 		m.board.columns[idx].status.Category == core.CategoryTodo
 }
 
@@ -207,6 +225,10 @@ func (m Model) updateBoard(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch {
+	case key.Matches(msg, m.keys.Search):
+		return m.openSearch()
+	case msg.String() == "esc" && m.boardQuery != "":
+		return m.applySearch(viewBoard, "") // esc lifts a live filter
 	case key.Matches(msg, m.keys.Up):
 		m.cardIdx--
 		m.clampSelection()

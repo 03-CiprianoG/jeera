@@ -30,6 +30,7 @@ const (
 	modeDetail
 	modePicker
 	modeSettings
+	modeSearch // the find overlay over the Board or Backlog
 )
 
 // view is the active top-level destination shown in the navbar. Unlike mode, a
@@ -78,9 +79,16 @@ type Model struct {
 	form      *formModel
 	detail    *detailModel
 	picker    *pickerModel // non-nil while a chooser overlay is open
+	search    *searchModel // non-nil while the find overlay is open
 	confirm   string
 	onConfirm func() tea.Cmd
 	projSel   int
+
+	// Live search filters, one per searchable view, persisted across the store-
+	// event reloads so an agent's change never silently drops the filter. The
+	// *Total fields hold the unfiltered count, so the chrome can say "3 of 12".
+	boardQuery, backlogQuery string
+	boardTotal, backlogTotal int
 
 	toastText string
 	errText   string
@@ -157,6 +165,13 @@ func (m *Model) reload() {
 		m.errText = err.Error()
 		return
 	}
+	// A live board search narrows the lanes here, at the single load chokepoint,
+	// so every downstream invariant (selection, move, count) holds over exactly
+	// what's shown — and the filter survives the post-mutation reload untouched.
+	m.boardTotal = countCards(bd)
+	if m.boardQuery != "" {
+		bd = filterBoard(bd, m.boardQuery)
+	}
 	m.board = bd
 	if prevID != 0 {
 		m.selectIssueByID(prevID) // re-anchor; falls back to clamp if it's gone
@@ -180,6 +195,12 @@ func (m *Model) refreshView() {
 		if err != nil {
 			m.errText = err.Error()
 			return
+		}
+		// Keep the true backlog size for the chrome, then narrow to the live
+		// filter so selection and rendering work over exactly what's shown.
+		m.backlogTotal = len(bl.issues)
+		if m.backlogQuery != "" {
+			bl.issues = filterIssues(bl.issues, m.backlogQuery)
 		}
 		m.backlog = bl
 		if prevID != 0 {
@@ -335,9 +356,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyPressMsg:
 		return m.handleKey(msg)
 	}
-	// Route other messages (e.g. cursor blink) to the active form or detail view.
+	// Route other messages (e.g. cursor blink) to the active form, search or
+	// detail view.
 	if m.mode == modeForm && m.form != nil {
 		return m, m.form.update(msg)
+	}
+	if m.mode == modeSearch && m.search != nil {
+		return m, m.search.update(msg)
 	}
 	if m.mode == modeDetail && m.detail != nil {
 		return m.routeDetail(msg)
@@ -379,6 +404,8 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.routeDetail(msg)
 	case modePicker:
 		return m.updatePicker(msg)
+	case modeSearch:
+		return m.updateSearch(msg)
 	case modeSettings:
 		if m.settings != nil && m.settings.update(msg) {
 			m.settings = nil
@@ -442,6 +469,8 @@ func (m Model) View() tea.View {
 		mid = m.center(m.renderConfirm(), midHeight)
 	case modePicker:
 		mid = m.center(m.picker.View(m.theme), midHeight)
+	case modeSearch:
+		mid = m.center(m.renderSearch(), midHeight)
 	case modeSettings:
 		mid = m.center(m.settings.View(), midHeight)
 	default: // modeNormal

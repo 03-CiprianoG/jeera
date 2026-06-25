@@ -69,6 +69,7 @@ type Theme struct {
 
 	ColumnTitle lipgloss.Style
 	CountBadge  lipgloss.Style
+	ScrollHint  lipgloss.Style
 
 	Modal      lipgloss.Style
 	Label      lipgloss.Style
@@ -138,6 +139,10 @@ func build(p Palette) Theme {
 
 	t.ColumnTitle = base.Bold(true).Padding(0, 1)
 	t.CountBadge = base.Foreground(p.TextSubtle)
+	// ScrollHint is the quiet "N more" affordance at a column's top or bottom edge
+	// when its cards overflow the visible height. Same hue as the count badge, so
+	// the two read as one idea: how many cards there are, and how many are hidden.
+	t.ScrollHint = base.Foreground(p.TextSubtle).Align(lipgloss.Center)
 
 	t.Modal = base.
 		Border(lipgloss.RoundedBorder()).

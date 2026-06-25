@@ -268,14 +268,14 @@ func (m Model) renderSprints(height int) string {
 		lines = append(lines, m.renderSprintHeader(sr, itemIdx == m.sprintSel))
 		itemIdx++
 		if len(sr.issues) == 0 {
-			lines = append(lines, "     "+t.HelpDesc.Render("— no issues —"))
+			lines = append(lines, "      "+t.HelpDesc.Render("— no issues —"))
 			continue
 		}
 		for _, iss := range sr.issues {
 			if itemIdx == m.sprintSel {
 				selLine = len(lines)
 			}
-			lines = append(lines, m.renderIssueRow(iss, itemIdx == m.sprintSel, m.sprints.statuses))
+			lines = append(lines, m.renderIssueRow(iss, itemIdx == m.sprintSel, m.sprints.statuses, 4))
 			itemIdx++
 		}
 	}
@@ -287,30 +287,28 @@ func (m Model) renderSprints(height int) string {
 func (m Model) renderSprintHeader(sr sprintRow, selected bool) string {
 	t := m.theme
 	c := t.SprintStateColor(sr.sprint.State)
-	marker := "  "
-	if selected {
-		marker = t.HelpKey.Render("▸ ")
-	}
-	dot := lipgloss.NewStyle().Foreground(c).Render("●")
 	// Cap the name so a long one never pushes the state/dates/meta off a narrow
 	// terminal — the rest of the row is short and fixed.
 	nameW := m.width - 48
 	if nameW < 12 {
 		nameW = 12
 	}
-	name := t.Title.Render(truncate(sr.sprint.Name, nameW))
-	state := lipgloss.NewStyle().Foreground(c).Render(string(sr.sprint.State))
-
-	left := marker + dot + " " + name + "  " + state
-	if dr := sprintDates(sr.sprint); dr != "" {
-		left += "  " + t.HelpDesc.Render(dr)
+	left := []cell{
+		cText("  "),
+		cFg("● ", c),
+		cKey(truncate(sr.sprint.Name, nameW), t.P.TextPrimary),
+		cText("  "),
+		cFg(string(sr.sprint.State), c),
 	}
-
+	if dr := sprintDates(sr.sprint); dr != "" {
+		left = append(left, cText("  "), cFg(dr, t.P.TextSubtle))
+	}
 	meta := fmt.Sprintf("%d issue%s", len(sr.issues), pluralS(len(sr.issues)))
 	if sr.points > 0 {
 		meta += fmt.Sprintf(" · %d pts", sr.points)
 	}
-	return spread(left, t.CardMeta.Render(meta), m.width-2)
+	right := []cell{cFg(meta, t.P.TextSubtle), cText("  ")}
+	return listRow(t, m.width, selected, left, right)
 }
 
 func (m Model) sprintsEmpty() string {

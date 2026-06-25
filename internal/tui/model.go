@@ -269,9 +269,11 @@ func (m *Model) clampSelection() {
 	if m.colIdx < 0 {
 		m.colIdx = 0
 	}
+	// cardIdx ranges 0..n, where n (one past the last card) is the column's
+	// "+ New issue" slot — always selectable, so an empty column still offers it.
 	n := len(m.board.columns[m.colIdx].cards)
-	if m.cardIdx >= n {
-		m.cardIdx = n - 1
+	if m.cardIdx > n {
+		m.cardIdx = n
 	}
 	if m.cardIdx < 0 {
 		m.cardIdx = 0
@@ -416,10 +418,9 @@ func (m Model) View() tea.View {
 		v.BackgroundColor = m.theme.P.BgBase
 		return v
 	}
-	header := m.renderHeader()
-	navbar := m.renderNavbar()
+	nav := m.renderNavbar()
 	footer := m.renderFooter()
-	midHeight := m.height - lipgloss.Height(header) - lipgloss.Height(navbar) - lipgloss.Height(footer)
+	midHeight := m.height - lipgloss.Height(nav) - lipgloss.Height(footer)
 	if midHeight < 1 {
 		midHeight = 1
 	}
@@ -444,7 +445,7 @@ func (m Model) View() tea.View {
 		mid = m.renderActiveView(midHeight)
 	}
 
-	content := lipgloss.JoinVertical(lipgloss.Left, header, navbar, mid, footer)
+	content := lipgloss.JoinVertical(lipgloss.Left, nav, mid, footer)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	v.BackgroundColor = m.theme.P.BgBase

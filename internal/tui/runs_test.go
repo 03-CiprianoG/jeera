@@ -93,7 +93,7 @@ func TestRunsTabReturnsToBoard(t *testing.T) {
 	m.view = viewRuns
 	// Runs is a peer view now, not a closeable overlay: Tab cycles
 	// board→sprints→runs→board, so from Runs it wraps back to the board.
-	next, _ := m.Update(keyPress("tab"))
+	next, _ := m.Update(keyPress("alt+tab"))
 	if got := next.(Model).view; got != viewBoard {
 		t.Errorf("tab from Runs should wrap to the board, got view %d", got)
 	}

@@ -1,30 +1,30 @@
- JEE-1  story  ● To Do                                                                     esc back 
-   Overview    Agent    Relations    Files    Activity                                              
-─━━━━━━━━━━━━───────────────────────────────────────────                                            
-Build the board                                              ▸ Status   To Do                       
-                                                               Type     story                       
-                                                               Priority △ high                      
-  ## Goal                                                      Points   5                           
-                                                               Sprint   —                           
-  Build a calm, keyboard-driven board.                         Epic     —                           
-                                                               Tags     #ui                         
-  • columns by status                                                                               
-  • model-assignee cards                                                                            
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
- tab tabs  j/k field  h/l change  e describe  esc back                                              
+ JEE-1  story  ● To Do                                                        tab panels · esc back 
+╭─ DESCRIPTION ──────────────────────────────────────────────╮ ╭─ PROPERTIES ──────────────────────╮
+│ Build the board                                            │ │ Status     To Do                  │
+│                                                            │ │ Type       story                  │
+│                                                            │ │ Priority   △ high                 │
+│                                                            │ │ Points     5                      │
+│   ## Goal                                                  │ │ Sprint     —                      │
+│                                                            │ │ Epic       —                      │
+│   Build a calm, keyboard-driven board.                     │ │ Tags       #ui                    │
+│                                                            │ ╰───────────────────────────────────╯
+│   • columns by status                                      │ ╭─ AGENT ───────────────────────────╮
+│   • model-assignee cards                                   │ │ Provider   claude                 │
+│                                                            │ │ Model      opus                   │
+│                                                            │ │ Effort     high                   │
+│                                                            │ │ Worktree   on                     │
+│                                                   ✎ Edit   │ │                                   │
+╰────────────────────────────────────────────────────────────╯ │   ▶ Run     ⑂ Children            │
+╭─ ACTIVITY ─────────────────────────────────────────────────╮ │   ✦ Discuss     ⏱ Schedule        │
+│ human     Kicked off.                                      │ ╰───────────────────────────────────╯
+│                                                            │ ╭─ RELATIONS & FILES ───────────────╮
+│                                                            │ │ Epic     —                        │
+│                                                            │ │ Parent   —                        │
+│                                                            │ │ FILES · 0                         │
+│                                                            │ │                                   │
+│                                                            │ │                        ◌ Attach   │
+│                                                            │ │                                   │
+│                                                            │ │                                   │
+│                                                + Comment   │ │                                   │
+╰────────────────────────────────────────────────────────────╯ ╰───────────────────────────────────╯
+ tab panel  ↑↓ scroll  enter edit  esc back                                                         

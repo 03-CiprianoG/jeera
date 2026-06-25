@@ -9,10 +9,14 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/03-CiprianoG/jeera/internal/core"
 	"github.com/03-CiprianoG/jeera/internal/store"
 )
+
+// lineWidth is the display-cell width of an (ANSI-stripped) line.
+func lineWidth(s string) int { return lipgloss.Width(s) }
 
 var updateGolden = flag.Bool("update", false, "update golden files")
 
@@ -50,6 +54,22 @@ func keyPress(s string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: tea.KeyTab}
 	case "shift+tab":
 		return tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModShift}
+	case "alt+tab":
+		return tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModAlt}
+	case "alt+shift+tab":
+		return tea.KeyPressMsg{Code: tea.KeyTab, Mod: tea.ModAlt | tea.ModShift}
+	case "shift+left":
+		return tea.KeyPressMsg{Code: tea.KeyLeft, Mod: tea.ModShift}
+	case "shift+right":
+		return tea.KeyPressMsg{Code: tea.KeyRight, Mod: tea.ModShift}
+	case "up":
+		return tea.KeyPressMsg{Code: tea.KeyUp}
+	case "down":
+		return tea.KeyPressMsg{Code: tea.KeyDown}
+	case "left":
+		return tea.KeyPressMsg{Code: tea.KeyLeft}
+	case "right":
+		return tea.KeyPressMsg{Code: tea.KeyRight}
 	case "backspace":
 		return tea.KeyPressMsg{Code: tea.KeyBackspace}
 	}

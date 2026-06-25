@@ -1,30 +1,30 @@
- JEE-1  story  ● To Do                                                                     esc back 
-   Overview    Agent    Relations    Files    Activity                                              
-───────────────────────────────────━━━━━━━━━────────────                                            
-2 attachments                                                                                       
-                                                                                                    
-▸ 📎 jeera-diagram.png                                                                   image/png  
-  🔗 example.com/spec                                                     https://example.com/spec  
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
- tab tabs  j/k select  o open  A attach  esc back                                                   
+ JEE-1  story  ● To Do                                                        tab panels · esc back 
+╭─ DESCRIPTION ──────────────────────────────────────────────╮ ╭─ PROPERTIES ──────────────────────╮
+│ Build the board                                            │ │ Status     To Do                  │
+│                                                            │ │ Type       story                  │
+│                                                            │ │ Priority   ■ medium               │
+│                                                            │ │ Points     —                      │
+│   No description yet. Press e to add one.                  │ │ Sprint     —                      │
+│                                                            │ │ Epic       —                      │
+│                                                            │ │ Tags       —                      │
+│                                                            │ ╰───────────────────────────────────╯
+│                                                            │ ╭─ AGENT ───────────────────────────╮
+│                                                            │ │ Provider   —                      │
+│                                                            │ │ Model      —                      │
+│                                                            │ │ Effort     —                      │
+│                                                            │ │ Worktree   on                     │
+│                                                   ✎ Edit   │ │                                   │
+╰────────────────────────────────────────────────────────────╯ │   ▶ Run     ⑂ Children            │
+╭─ ACTIVITY ─────────────────────────────────────────────────╮ │   ✦ Discuss     ⏱ Schedule        │
+│ No activity yet — start the conversation.                  │ ╰───────────────────────────────────╯
+│                                                            │ ╭─ RELATIONS & FILES ───────────────╮
+│                                                            │ │ Epic     —                        │
+│                                                            │ │ Parent   —                        │
+│                                                            │ │ FILES · 2                         │
+│                                                            │ │ ◌ jeera-diagram.png               │
+│                                                            │ │ ↗ example.com/spec                │
+│                                                            │ │                                   │
+│                                                            │ │                        ◌ Attach   │
+│                                                + Comment   │ │                                   │
+╰────────────────────────────────────────────────────────────╯ ╰───────────────────────────────────╯
+ tab panel  ↑↓ select  enter open/attach  esc back                                                  

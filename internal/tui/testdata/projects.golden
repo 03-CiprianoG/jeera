@@ -1,6 +1,7 @@
-  Jeera  Jeera JEE                                                                        ● mcp off 
-   Board    Backlog    Sprints    Runs                                                              
-─━━━━━━━━━──────────────────────────────                                                            
+                ╭────────────╮   ╭──────────────╮   ╭──────────────╮   ╭───────────╮                
+                │  ▦  Board  │   │  ≡  Backlog  │   │  ◴  Sprints  │   │  ▶  Runs  │                
+                ╰────────────╯   ╰──────────────╯   ╰──────────────╯   ╰───────────╯                
+────────────────────────────────────────────────────────────────────────────────────────────────────
                                                                                                     
                                                                                                     
                                                                                                     
@@ -26,5 +27,4 @@
                                                                                                     
                                                                                                     
                                                                                                     
-                                                                                                    
- tab next view  ↑/k up  ↓/j down  ←/h prev column  →/l next column  n new  ? help  q quit
+  Jeera  Jeera JEE                                                               ● mcp off   ? help

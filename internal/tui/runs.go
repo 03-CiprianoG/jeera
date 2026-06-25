@@ -121,45 +121,42 @@ func shortSession(id string) string {
 // be re-opened in an external terminal. It refreshes live as runs change.
 func (m Model) renderRuns(height int) string {
 	t := m.theme
-	header := t.Label.Render("Recent runs") + "   " + t.HelpDesc.Render(fmt.Sprintf("%d active", m.activeRuns))
-	lines := []string{header, ""}
+	lines := []string{sectionHeader(t, "Recent runs", fmt.Sprintf("%d active", m.activeRuns)), ""}
 
 	if len(m.recentRuns) == 0 {
-		lines = append(lines, t.HelpDesc.Render("No runs yet. Open a ticket and press s to start one."))
+		lines = append(lines, "  "+t.HelpDesc.Render("No runs yet. Open a ticket and press Run to start one."))
 	}
 	// Window the list so the selected row is always on screen: the rows share the
 	// height with the section label and the blank line beneath it.
 	start, end := scrollWindow(m.runsCursor, len(m.recentRuns), height-2)
 	for i := start; i < end; i++ {
 		r := m.recentRuns[i]
-		key := "?"
+		k := "?"
 		if iss, err := m.store.GetIssue(r.IssueID); err == nil {
-			key = iss.Key
+			k = iss.Key
 		}
-		statusStyle := lipgloss.NewStyle().Foreground(t.RunStateColor(r.Status))
 		assignee := string(r.Provider)
 		if r.Model != "" {
 			assignee += "·" + r.Model
 		}
-		when := ""
+		left := []cell{
+			cText("  "),
+			cKey(fmt.Sprintf("%-9s ", fmt.Sprintf("%s v%d", k, r.Version)), t.P.Focus),
+			cFg(fmt.Sprintf("%-10s ", string(r.Status)), t.RunStateColor(r.Status)),
+			cFg(truncate(assignee, max(8, m.width/4)), t.P.Info),
+		}
+		var right []cell
 		if r.StartedAt != nil {
-			when = r.StartedAt.Local().Format("15:04:05")
+			right = append(right, cFg(r.StartedAt.Local().Format("15:04:05"), t.P.TextSubtle))
 		}
-		marker := "  "
-		if i == m.runsCursor {
-			marker = t.HelpKey.Render("▸ ")
-		}
-		session := ""
 		if r.SessionID != "" {
-			session = "   " + t.HelpDesc.Render("↻ "+shortSession(r.SessionID))
+			if len(right) > 0 {
+				right = append(right, cText("   "))
+			}
+			right = append(right, cFg("↻ "+shortSession(r.SessionID), t.P.Info))
 		}
-		line := marker +
-			t.CardKey.Render(fmt.Sprintf("%-9s", fmt.Sprintf("%s v%d", key, r.Version))) + "  " +
-			statusStyle.Render(fmt.Sprintf("%-10s", r.Status)) + "  " +
-			t.Chip.Render(assignee) + "   " +
-			t.CardMeta.Render(when) +
-			session
-		lines = append(lines, line)
+		right = append(right, cText("  "))
+		lines = append(lines, listRow(t, m.width, i == m.runsCursor, left, right))
 	}
 
 	return fitHeight(lipgloss.JoinVertical(lipgloss.Left, lines...), height)

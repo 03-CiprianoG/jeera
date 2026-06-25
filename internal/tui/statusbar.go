@@ -2,101 +2,71 @@ package tui
 
 import (
 	"image/color"
-	"strings"
 
-	"charm.land/bubbles/v2/key"
 	"charm.land/lipgloss/v2"
 )
 
-// renderHeader is the top bar: the Jeera mark and active project on the left,
-// the live MCP "wire" pill on the right.
-func (m Model) renderHeader() string {
+// renderNavbar is the app's primary wayfinding: a big, centered strip of
+// icon+label pills, the active one filled iris. It walks with ⌥tab so plain tab
+// stays free for moving focus inside a view.
+func (m Model) renderNavbar() string {
+	items := []navItem{
+		{iconBoard, "Board"},
+		{iconBacklog, "Backlog"},
+		{iconSprints, "Sprints"},
+		{iconRuns, "Runs"},
+	}
+	return navbar(m.theme, m.width, items, int(m.view))
+}
+
+// renderFooter is the bottom chrome — the identity bar Jeera used to wear up top,
+// moved down so the navbar can lead. The Jeera mark and active project sit on the
+// left, the live MCP "wire" and a single ? help affordance on the right, with any
+// transient toast or error riding just ahead of them.
+func (m Model) renderFooter() string {
 	t := m.theme
 	brand := lipgloss.NewStyle().
 		Foreground(t.P.BgBase).Background(t.P.Focus).Bold(true).
 		Padding(0, 1).Render("Jeera")
+	help := t.HelpKey.Render(iconHelp) + " " + t.HelpDesc.Render("help")
 
-	right := m.mcpPill()
+	// The right cluster is the always-on identity: the live wire and the one help
+	// affordance (plus the run badge when something is running). It is never
+	// dropped, so the project name on the left yields space to it first.
+	core := m.mcpPill() + "   " + help
 	if badge := m.runBadge(); badge != "" {
-		right = badge + "   " + right
+		core = badge + "   " + core
 	}
-	proj := t.HelpDesc.Render("no project — press n to create one")
+
+	proj := t.HelpDesc.Render("no project yet")
 	if m.active.ID != 0 {
-		// Truncate the project name so a long one never overflows the bar.
-		budget := m.width - 4 - lipgloss.Width(brand) - lipgloss.Width(right) - lipgloss.Width(m.active.KeyPrefix) - 2
-		if budget < 6 {
-			budget = 6
+		budget := m.width - 4 - lipgloss.Width(brand) - 1 - lipgloss.Width(core) - 1 - lipgloss.Width(m.active.KeyPrefix)
+		if budget < 4 {
+			budget = 4
 		}
-		proj = t.Title.Render(truncate(m.active.Name, budget)) + " " + t.CardMeta.Render(m.active.KeyPrefix)
+		proj = t.StatusText.Render(truncate(m.active.Name, budget)) + " " + t.CardMeta.Render(m.active.KeyPrefix)
 	}
 	left := brand + " " + proj
 
-	inner := spread(left, right, m.width-2)
-	return lipgloss.NewStyle().Background(t.P.BgSurface).Width(m.width).Render(" " + inner + " ")
-}
-
-// renderNavbar is the destination strip beneath the header: Board · Backlog ·
-// Sprints · Runs. The active destination carries the iris accent and a heavy underline;
-// the inactive ones sit muted on a light hairline. The in-ticket tab strip is
-// intended to adopt this same treatment, so the two read as one system.
-func (m Model) renderNavbar() string {
-	// Labels are in view-enum order (viewBoard … viewRuns), so the active index is
-	// just the view itself.
-	labels := []string{"Board", "Backlog", "Sprints", "Runs"}
-	return tabStrip(m.theme, m.width, labels, int(m.view))
-}
-
-// renderFooter is the bottom status bar: key hints on the left, transient
-// toast/error on the right. The hints are budgeted to the available width so
-// the bar never wraps; help and quit are always kept.
-func (m Model) renderFooter() string {
-	t := m.theme
-	right := ""
+	// Transient feedback rides just ahead of the core cluster — but only when it
+	// fits the gap, so a long error at a narrow width can never wrap the bar.
+	right := core
+	feedback := ""
 	switch {
 	case m.errText != "":
-		right = t.Error.Render("! " + truncate(m.errText, m.width/3))
+		feedback = t.Error.Render("! " + m.errText)
 	case m.toastText != "":
-		right = t.Toast.Render(m.toastText)
+		feedback = t.Toast.Render(m.toastText)
 	}
-	inner := spread(m.shortHelp(m.width-2-lipgloss.Width(right)-1), right, m.width-2)
+	if feedback != "" {
+		gap := (m.width - 2) - lipgloss.Width(left) - lipgloss.Width(core)
+		if avail := gap - 3; avail >= 6 {
+			right = ansiClip(feedback, avail) + "   " + core
+		}
+	}
+
+	inner := spread(left, right, m.width-2)
 	return lipgloss.NewStyle().Background(t.P.BgSurface).Width(m.width).Render(" " + inner + " ")
-}
-
-// shortHelp renders a one-line key hint strip that fits within budget. The help
-// and quit hints are always reserved at the end; the navigation hints fill
-// whatever space remains.
-func (m Model) shortHelp(budget int) string {
-	t := m.theme
-	sep := t.HelpDesc.Render("  ")
-	seg := func(b key.Binding) string {
-		h := b.Help()
-		return t.HelpKey.Render(h.Key) + " " + t.HelpDesc.Render(h.Desc)
-	}
-
-	tail := seg(m.keys.Help) + sep + seg(m.keys.Quit)
-	navBudget := budget - lipgloss.Width(tail) - lipgloss.Width(sep)
-
-	var nav strings.Builder
-	w := 0
-	for _, b := range m.navHints() {
-		s := seg(b)
-		add := lipgloss.Width(s)
-		if nav.Len() > 0 {
-			add += lipgloss.Width(sep)
-		}
-		if w+add > navBudget {
-			break
-		}
-		if nav.Len() > 0 {
-			nav.WriteString(sep)
-		}
-		nav.WriteString(s)
-		w += add
-	}
-	if nav.Len() == 0 {
-		return tail
-	}
-	return nav.String() + sep + tail
 }
 
 // mcpPill renders the always-visible MCP connection indicator — Jeera's

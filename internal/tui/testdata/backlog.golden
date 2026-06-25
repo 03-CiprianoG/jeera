@@ -1,13 +1,11 @@
-  Jeera  Jeera JEE                                                                        ● mcp off 
-   Board    Backlog    Sprints    Runs                                                              
-──────────━━━━━━━━━━━───────────────────                                                            
-Backlog   2 unsprinted                                                                              
+                ╭────────────╮   ╭──────────────╮   ╭──────────────╮   ╭───────────╮                
+                │  ▦  Board  │   │  ≡  Backlog  │   │  ◴  Sprints  │   │  ▶  Runs  │                
+                ╰────────────╯   ╰──────────────╯   ╰──────────────╯   ╰───────────╯                
+────────────────────────────────────────────────────────────────────────────────────────────────────
+  BACKLOG   2 unsprinted                                                                            
                                                                                                     
-▸ ● △ JEE-1      Add OAuth login                                                               3pt  
-  ● ■ JEE-2      Fix the flaky test                                                                 
-                                                                                                    
-                                                                                                    
-                                                                                                    
+  ● △ JEE-1     Add OAuth login                                                                3pt  
+  ● ■ JEE-2     Fix the flaky test                                                                  
                                                                                                     
                                                                                                     
                                                                                                     
@@ -27,4 +25,6 @@ Backlog   2 unsprinted
                                                                                                     
                                                                                                     
                                                                                                     
- tab next view  ↑/k up  ↓/j down  enter open  a assign  n new  p projects  m mcp  ? help  q quit
+                                                                                                    
+                                                                                                    
+  Jeera  Jeera JEE                                                               ● mcp off   ? help

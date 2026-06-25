@@ -1,13 +1,11 @@
-  Jeera  Jeera JEE                                                                        ● mcp off 
-   Board    Backlog    Sprints    Runs                                                              
-────────────────────────────────━━━━━━━━                                                            
-Recent runs   0 active                                                                              
+                ╭────────────╮   ╭──────────────╮   ╭──────────────╮   ╭───────────╮                
+                │  ▦  Board  │   │  ≡  Backlog  │   │  ◴  Sprints  │   │  ▶  Runs  │                
+                ╰────────────╯   ╰──────────────╯   ╰──────────────╯   ╰───────────╯                
+────────────────────────────────────────────────────────────────────────────────────────────────────
+  RECENT RUNS   0 active                                                                            
                                                                                                     
-▸ JEE-1 v2   failed      codex                                                                      
-  JEE-1 v1   succeeded   claude·opus      ↻ 93049003                                                
-                                                                                                    
-                                                                                                    
-                                                                                                    
+  JEE-1 v2  failed     codex                                                                        
+  JEE-1 v1  succeeded  claude·opus                                                      ↻ 93049003  
                                                                                                     
                                                                                                     
                                                                                                     
@@ -27,4 +25,6 @@ Recent runs   0 active
                                                                                                     
                                                                                                     
                                                                                                     
- tab next view  ↑/k up  ↓/j down  t resume  w watch  p projects  m mcp  , settings  ? help  q quit
+                                                                                                    
+                                                                                                    
+  Jeera  Jeera JEE                                                               ● mcp off   ? help

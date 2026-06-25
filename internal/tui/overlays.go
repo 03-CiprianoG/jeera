@@ -22,7 +22,8 @@ func (m Model) renderHelp() string {
 		col := lipgloss.JoinVertical(lipgloss.Left, lines...)
 		cols = append(cols, lipgloss.NewStyle().MarginRight(3).Render(col))
 	}
-	body := t.Title.Render("Keys") + "\n\n" + lipgloss.JoinHorizontal(lipgloss.Top, cols...)
+	legend := t.HelpDesc.Render("⌥tab switches views · tab moves focus inside a view · ⇧+arrows move a ticket")
+	body := t.Title.Render("Keys") + "\n" + legend + "\n\n" + lipgloss.JoinHorizontal(lipgloss.Top, cols...)
 	body += "\n\n" + t.HelpDesc.Render("press any key to close")
 	return t.Modal.Render(body)
 }

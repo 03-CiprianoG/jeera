@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
@@ -80,7 +81,7 @@ func (m Model) updateBacklog(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		m.clampBacklogSel()
 	case key.Matches(msg, m.keys.New):
 		if m.active.ID != 0 {
-			m.form = newCreateIssueForm()
+			m.form = newCreateIssueForm(0)
 			m.mode = modeForm
 			return m, m.form.focusCmd()
 		}
@@ -111,44 +112,42 @@ func (m Model) renderBacklog(height int) string {
 		return m.center(m.backlogEmpty(), height)
 	}
 
-	header := t.Label.Render("Backlog") + "   " + t.HelpDesc.Render(fmt.Sprintf("%d unsprinted", len(m.backlog.issues)))
-	lines := []string{header, ""}
+	lines := []string{sectionHeader(t, "Backlog", fmt.Sprintf("%d unsprinted", len(m.backlog.issues))), ""}
 	start, end := scrollWindow(m.backlogSel, len(m.backlog.issues), height-2)
 	for i := start; i < end; i++ {
-		lines = append(lines, m.renderIssueRow(m.backlog.issues[i], i == m.backlogSel, m.backlog.statuses))
+		lines = append(lines, m.renderIssueRow(m.backlog.issues[i], i == m.backlogSel, m.backlog.statuses, 2))
 	}
 	return fitHeight(lipgloss.JoinVertical(lipgloss.Left, lines...), height)
 }
 
-// renderIssueRow renders one issue as a single line — status dot, priority glyph,
-// key and title, with story points right-aligned. Shared by the Backlog and
-// Sprints views so an issue reads identically wherever it appears.
-func (m Model) renderIssueRow(iss core.Issue, selected bool, statuses map[int64]core.Status) string {
+// renderIssueRow renders one issue as a single full-width line — status dot,
+// priority glyph, key and title, with story points trailing. When selected the
+// whole row carries the iris fill, so the highlight reads as one bar (no ragged
+// marker). `indent` insets the content within the fill; the Sprints view nests
+// its issues a little deeper than the flat Backlog. Shared by both views so an
+// issue reads identically wherever it appears.
+func (m Model) renderIssueRow(iss core.Issue, selected bool, statuses map[int64]core.Status, indent int) string {
 	t := m.theme
 	cat := core.CategoryTodo
 	if s, ok := statuses[iss.StatusID]; ok {
 		cat = s.Category
 	}
-	stDot := lipgloss.NewStyle().Foreground(t.CategoryColor(cat)).Render("●")
-	pri := lipgloss.NewStyle().Foreground(t.PriorityColor(iss.Priority)).Render(theme.PriorityGlyph(iss.Priority))
-
-	marker := "  "
-	titleStyle := t.CardTitle
-	if selected {
-		marker = t.HelpKey.Render("▸ ")
-		titleStyle = titleStyle.Bold(true)
-	}
-	titleW := m.width - 24
+	titleW := m.width - indent - 24
 	if titleW < 8 {
 		titleW = 8
 	}
-	left := marker + stDot + " " + pri + " " +
-		t.CardKey.Render(fmt.Sprintf("%-10s", iss.Key)) + " " +
-		titleStyle.Render(truncate(iss.Title, titleW))
-	if iss.StoryPoints != nil {
-		return spread(left, t.CardMeta.Render(fmt.Sprintf("%dpt", *iss.StoryPoints)), m.width-2)
+	left := []cell{
+		cText(strings.Repeat(" ", indent)),
+		cFg("● ", t.CategoryColor(cat)),
+		cFg(theme.PriorityGlyph(iss.Priority)+" ", t.PriorityColor(iss.Priority)),
+		cKey(fmt.Sprintf("%-9s ", iss.Key), t.P.Focus),
+		cText(truncate(iss.Title, titleW)),
 	}
-	return left
+	right := []cell{cText("  ")}
+	if iss.StoryPoints != nil {
+		right = []cell{cFg(fmt.Sprintf("%dpt", *iss.StoryPoints), t.P.TextSubtle), cText("  ")}
+	}
+	return listRow(t, m.width, selected, left, right)
 }
 
 func (m Model) backlogEmpty() string {

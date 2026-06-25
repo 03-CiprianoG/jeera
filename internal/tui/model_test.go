@@ -83,7 +83,7 @@ func TestSubmitCreateIssueSelectsResult(t *testing.T) {
 	m, st := newTestModel(t)
 	seedProject(t, st)
 	m.reload()
-	m.form = newCreateIssueForm()
+	m.form = newCreateIssueForm(0)
 	m.form.fields[0].SetValue("Ship it")
 	m.mode = modeForm
 

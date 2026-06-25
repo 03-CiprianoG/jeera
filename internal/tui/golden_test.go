@@ -56,7 +56,7 @@ func TestGoldenHelp(t *testing.T) {
 func TestGoldenForm(t *testing.T) {
 	m, _ := newTestModel(t)
 	seedBoard(t, &m)
-	m.form = newCreateIssueForm()
+	m.form = newCreateIssueForm(0)
 	m.mode = modeForm
 	goldenFile(t, "form", render(m))
 }

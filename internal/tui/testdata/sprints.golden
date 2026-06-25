@@ -1,12 +1,13 @@
-  Jeera  Jeera JEE                                                                        ● mcp off 
-   Board    Backlog    Sprints    Runs                                                              
-─────────────────────━━━━━━━━━━━────────                                                            
-▸ ● Sprint 1  active                                                              2 issues · 5 pts  
-  ● △ JEE-1      Design the kanban board layout                                                5pt  
-  ● ■ JEE-2      Wire up the MCP status pill                                                        
+                ╭────────────╮   ╭──────────────╮   ╭──────────────╮   ╭───────────╮                
+                │  ▦  Board  │   │  ≡  Backlog  │   │  ◴  Sprints  │   │  ▶  Runs  │                
+                ╰────────────╯   ╰──────────────╯   ╰──────────────╯   ╰───────────╯                
+────────────────────────────────────────────────────────────────────────────────────────────────────
+  ● Sprint 1  active                                                              2 issues · 5 pts  
+    ● △ JEE-1     Design the kanban board layout                                               5pt  
+    ● ■ JEE-2     Wire up the MCP status pill                                                       
                                                                                                     
   ● Sprint 2  future                                                                       1 issue  
-  ● ▽ JEE-3      Plan the sprints view                                                              
+    ● ▽ JEE-3     Plan the sprints view                                                             
                                                                                                     
                                                                                                     
                                                                                                     
@@ -26,5 +27,4 @@
                                                                                                     
                                                                                                     
                                                                                                     
-                                                                                                    
- tab next view  ↑/k up  ↓/j down  a add issue  s finish  x delete  n new sprint  ? help  q quit
+  Jeera  Jeera JEE                                                               ● mcp off   ? help

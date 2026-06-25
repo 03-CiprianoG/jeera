@@ -1,30 +1,30 @@
- JEE-1  story  ● To Do                                                                     esc back 
-   Overview    Agent    Relations    Files    Activity                                              
-──────────────────────━━━━━━━━━━━━━─────────────────────                                            
-Hierarchy                                                                                           
-                                                                                                    
-  Epic      JEE-2                                                                                   
-  Parent    —                                                                                       
-                                                                                                    
-Children                                                                                            
-                                                                                                    
-  JEE-3     Render the columns                                                                      
-                                                                                                    
-Links                                                                                               
-                                                                                                    
-  blocks      JEE-4 Theme tokens                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
- tab tabs  esc back                                                                                 
+ JEE-1  story  ● To Do                                                        tab panels · esc back 
+╭─ DESCRIPTION ──────────────────────────────────────────────╮ ╭─ PROPERTIES ──────────────────────╮
+│ Build the board                                            │ │ Status     To Do                  │
+│                                                            │ │ Type       story                  │
+│                                                            │ │ Priority   ■ medium               │
+│                                                            │ │ Points     —                      │
+│   No description yet. Press e to add one.                  │ │ Sprint     —                      │
+│                                                            │ │ Epic       JEE-2                  │
+│                                                            │ │ Tags       —                      │
+│                                                            │ ╰───────────────────────────────────╯
+│                                                            │ ╭─ AGENT ───────────────────────────╮
+│                                                            │ │ Provider   —                      │
+│                                                            │ │ Model      —                      │
+│                                                            │ │ Effort     —                      │
+│                                                            │ │ Worktree   on                     │
+│                                                   ✎ Edit   │ │                                   │
+╰────────────────────────────────────────────────────────────╯ │   ▶ Run     ⑂ Children            │
+╭─ ACTIVITY ─────────────────────────────────────────────────╮ │   ✦ Discuss     ⏱ Schedule        │
+│ No activity yet — start the conversation.                  │ ╰───────────────────────────────────╯
+│                                                            │ ╭─ RELATIONS & FILES ───────────────╮
+│                                                            │ │ Epic     JEE-2                    │
+│                                                            │ │ Parent   —                        │
+│                                                            │ │ CHILDREN · 1                      │
+│                                                            │ │ JEE-3 Render the columns          │
+│                                                            │ │ LINKS                             │
+│                                                            │ │ blocks JEE-4                      │
+│                                                            │ │ FILES · 0                         │
+│                                                + Comment   │ │                                   │
+╰────────────────────────────────────────────────────────────╯ ╰───────────────────────────────────╯
+ tab panel  ↑↓ select  enter open/attach  esc back                                                  

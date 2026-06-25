@@ -10,14 +10,14 @@ func TestViewSwitchingCycles(t *testing.T) {
 	}
 
 	for _, want := range []view{viewBacklog, viewSprints, viewRuns, viewBoard} {
-		next, _ := m.Update(keyPress("tab"))
+		next, _ := m.Update(keyPress("alt+tab"))
 		m = next.(Model)
 		if m.view != want {
 			t.Errorf("tab → view %d, want %d", m.view, want)
 		}
 	}
 
-	next, _ := m.Update(keyPress("shift+tab"))
+	next, _ := m.Update(keyPress("alt+shift+tab"))
 	m = next.(Model)
 	if m.view != viewRuns {
 		t.Errorf("shift+tab from board wraps → runs, got %d", m.view)
@@ -47,7 +47,7 @@ func TestGlobalKeysReachableFromSprints(t *testing.T) {
 func TestShiftTabFromSprints(t *testing.T) {
 	m, _ := newTestModel(t)
 	seedSprints(t, &m) // leaves the model on the Sprints view
-	next, _ := m.Update(keyPress("shift+tab"))
+	next, _ := m.Update(keyPress("alt+shift+tab"))
 	if got := next.(Model).view; got != viewBacklog {
 		t.Errorf("shift+tab from Sprints should step back to Backlog, got view %d", got)
 	}
@@ -66,7 +66,7 @@ func TestViewSwitchPreservesBoardSelection(t *testing.T) {
 	}
 
 	for i := 0; i < int(viewCount); i++ { // a full lap returns to the board
-		next, _ = m.Update(keyPress("tab"))
+		next, _ = m.Update(keyPress("alt+tab"))
 		m = next.(Model)
 	}
 	if m.view != viewBoard {

@@ -1,30 +1,30 @@
- JEE-1  story  ● To Do                                                                     esc back 
-   Overview    Agent    Relations    Files    Activity                                              
-─────────────━━━━━━━━━──────────────────────────────────                                            
-Assignee                                         Runs                                               
-                                                                                                    
-▸ Provider claude                                v2   running                                       
-  Model    opus                                  v1   succeeded                                     
-  Effort   high                                                                                     
-                                                                                                    
-  Worktree on                                                                                       
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
-                                                                                                    
- tab tabs  j/k field  h/l change  s start  D +children  d discuss  S schedule  w worktree           
+ JEE-1  story  ● To Do                                                        tab panels · esc back 
+╭─ DESCRIPTION ──────────────────────────────────────────────╮ ╭─ PROPERTIES ──────────────────────╮
+│ Build the board                                            │ │ Status     To Do                  │
+│                                                            │ │ Type       story                  │
+│                                                            │ │ Priority   ■ medium               │
+│                                                            │ │ Points     —                      │
+│   No description yet. Press e to add one.                  │ │ Sprint     —                      │
+│                                                            │ │ Epic       —                      │
+│                                                            │ │ Tags       —                      │
+│                                                            │ ╰───────────────────────────────────╯
+│                                                            │ ╭─ AGENT ───────────────────────────╮
+│                                                            │ │ Provider   claude                 │
+│                                                            │ │ Model      opus                   │
+│                                                            │ │ Effort     high                   │
+│                                                            │ │ Worktree   on                     │
+│                                                   ✎ Edit   │ │                                   │
+╰────────────────────────────────────────────────────────────╯ │   ▶ Run     ⑂ Children            │
+╭─ ACTIVITY ─────────────────────────────────────────────────╮ │   ✦ Discuss     ⏱ Schedule        │
+│ No activity yet — start the conversation.                  │ ╰───────────────────────────────────╯
+│                                                            │ ╭─ RELATIONS & FILES ───────────────╮
+│                                                            │ │ Epic     —                        │
+│                                                            │ │ Parent   —                        │
+│                                                            │ │ FILES · 0                         │
+│                                                            │ │                                   │
+│                                                            │ │                        ◌ Attach   │
+│                                                            │ │                                   │
+│                                                            │ │                                   │
+│                                                + Comment   │ │                                   │
+╰────────────────────────────────────────────────────────────╯ ╰───────────────────────────────────╯
+ tab panel  ↑↓ row  ←→ change  enter act  esc back                                                  

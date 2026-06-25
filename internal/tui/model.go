@@ -4,8 +4,12 @@
 package tui
 
 import (
+	"fmt"
+	"os"
+
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/03-CiprianoG/jeera/internal/config"
 	"github.com/03-CiprianoG/jeera/internal/core"
@@ -123,8 +127,9 @@ func New(st *store.Store, mcpSrv *mcp.Server, mgr *run.Manager, sched *schedule.
 	return m
 }
 
-// Init implements tea.Model.
-func (m Model) Init() tea.Cmd { return nil }
+// Init implements tea.Model. It emits the initial terminal title so the tab
+// reflects the active project from the first frame.
+func (m Model) Init() tea.Cmd { return emitTabTitle(m.windowTitle()) }
 
 // reload re-reads projects and the active project's board from the store. It
 // preserves the current selection by issue ID, so the asynchronous store-event
@@ -335,8 +340,35 @@ func (m Model) selectedIssue() (core.Issue, bool) {
 	return cards[m.cardIdx], true
 }
 
-// Update implements tea.Model.
+// Update implements tea.Model. It routes the message, then keeps the terminal
+// tab in sync: whenever the active project (and thus the title) changes, it
+// emits an OSC 0 sequence. Bubble Tea's View.WindowTitle only emits OSC 2 (the
+// window title), which many terminals show in the title bar but not the tab.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	next, cmd := m.update(msg)
+	nm, ok := next.(Model)
+	if !ok {
+		return next, cmd
+	}
+	// Only an update that actually flips the title needs to re-emit it; comparing
+	// before vs after keeps unrelated updates returning their command untouched.
+	if after := nm.windowTitle(); after != m.windowTitle() {
+		cmd = tea.Batch(cmd, emitTabTitle(after))
+	}
+	return nm, cmd
+}
+
+// emitTabTitle returns a command that writes an OSC 0 sequence, setting both the
+// terminal's icon name (the tab) and window title. This complements Bubble Tea's
+// own OSC 2 (window-title-only) emission so the tab label updates too.
+func emitTabTitle(title string) tea.Cmd {
+	return func() tea.Msg {
+		fmt.Fprint(os.Stdout, ansi.SetIconNameWindowTitle(title))
+		return nil
+	}
+}
+
+func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
@@ -438,15 +470,27 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 }
 
+// windowTitle is the terminal window/process title: "Jeera - {Project}" when a
+// project is active, falling back to "Jeera" before any project is loaded.
+func (m Model) windowTitle() string {
+	if m.active.Name != "" {
+		return "Jeera - " + m.active.Name
+	}
+	return "Jeera"
+}
+
 // View implements tea.Model.
 func (m Model) View() tea.View {
 	if m.width == 0 || m.height == 0 {
-		return tea.NewView("")
+		v := tea.NewView("")
+		v.WindowTitle = m.windowTitle()
+		return v
 	}
 	if m.width < 30 || m.height < 8 {
 		v := tea.NewView(m.theme.HelpDesc.Render("terminal too small"))
 		v.AltScreen = true
 		v.BackgroundColor = m.theme.P.BgBase
+		v.WindowTitle = m.windowTitle()
 		return v
 	}
 	// The detail view takes over the whole screen.
@@ -454,6 +498,7 @@ func (m Model) View() tea.View {
 		v := tea.NewView(m.detail.View())
 		v.AltScreen = true
 		v.BackgroundColor = m.theme.P.BgBase
+		v.WindowTitle = m.windowTitle()
 		return v
 	}
 	nav := m.renderNavbar()
@@ -489,6 +534,7 @@ func (m Model) View() tea.View {
 	v := tea.NewView(content)
 	v.AltScreen = true
 	v.BackgroundColor = m.theme.P.BgBase
+	v.WindowTitle = m.windowTitle()
 	return v
 }
 

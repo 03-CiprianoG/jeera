@@ -2,6 +2,7 @@ package tui
 
 import (
 	"flag"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -95,6 +96,28 @@ func render(m Model) string {
 }
 
 func stripANSI(s string) string { return ansiRE.ReplaceAllString(s, "") }
+
+// captureOutput runs fn with os.Stdout redirected to a pipe and returns whatever
+// fn wrote — used to assert on the raw OSC sequences the title commands emit.
+func captureOutput(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe: %v", err)
+	}
+	orig := os.Stdout
+	os.Stdout = w
+	defer func() { os.Stdout = orig }()
+
+	fn()
+	_ = w.Close()
+
+	var sb strings.Builder
+	if _, err := io.Copy(&sb, r); err != nil {
+		t.Fatalf("read captured output: %v", err)
+	}
+	return sb.String()
+}
 
 // goldenFile compares got against testdata/<name>.golden (or rewrites it with
 // -update).

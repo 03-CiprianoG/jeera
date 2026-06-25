@@ -160,6 +160,37 @@ func TestRemoveForIssueStopsJobs(t *testing.T) {
 	}
 }
 
+func TestRemoveForProjectStopsOnlyProjectJobs(t *testing.T) {
+	st, iss, r := setup(t) // iss belongs to the project created in setup
+	s := newScheduler(t, st, r)
+	_ = s.Start()
+	s.Add(iss.ID, "0 9 * * *", false)
+	s.Add(iss.ID, "0 18 * * *", false) // a second schedule on the same issue
+
+	// A second project with its own scheduled issue, which must survive.
+	p2, _ := st.CreateProject(core.Project{Name: "Other", KeyPrefix: "OTH", RepoPath: "/tmp/o"})
+	iss2, _ := st.CreateIssue(core.Issue{ProjectID: p2.ID, Title: "survivor"})
+	s.Add(iss2.ID, "0 12 * * *", false)
+
+	if got := s.ActiveJobs(); got != 3 {
+		t.Fatalf("want 3 active jobs before removal, got %d", got)
+	}
+
+	s.RemoveForProject(iss.ProjectID)
+
+	if got := s.ActiveJobs(); got != 1 {
+		t.Errorf("removing the project should stop both its jobs and leave the other project's, got %d", got)
+	}
+	if jobs := len(s.cron.Jobs()); jobs != 1 {
+		t.Errorf("only the other project's cron job should remain, got %d", jobs)
+	}
+
+	s.RemoveForProject(p2.ID)
+	if got := s.ActiveJobs(); got != 0 {
+		t.Errorf("removing the other project should leave no jobs, got %d", got)
+	}
+}
+
 func TestFireStartsTheIssue(t *testing.T) {
 	st, iss, r := setup(t)
 	s := newScheduler(t, st, r)

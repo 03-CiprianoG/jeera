@@ -120,6 +120,28 @@ func (s *Scheduler) RemoveForIssue(issueID int64) {
 	s.mu.Unlock()
 }
 
+// RemoveForProject stops every live job belonging to a project's issues. Call it
+// just before the project is deleted: the schedule rows cascade away with the
+// project, so this only has to drop the in-memory jobs that would otherwise keep
+// firing (against now-deleted issues) and leak in the jobs map. It resolves each
+// live job's issue to its project through the store, so it must run while the
+// issues still exist — before the cascade, not after.
+func (s *Scheduler) RemoveForProject(projectID int64) {
+	// Snapshot the live jobs' issue IDs so the store lookups below don't run while
+	// the lock is held (RemoveForIssue takes it again).
+	s.mu.Lock()
+	issueIDs := make(map[int64]struct{}, len(s.jobs))
+	for _, lj := range s.jobs {
+		issueIDs[lj.issueID] = struct{}{}
+	}
+	s.mu.Unlock()
+	for issueID := range issueIDs {
+		if iss, err := s.store.GetIssue(issueID); err == nil && iss.ProjectID == projectID {
+			s.RemoveForIssue(issueID)
+		}
+	}
+}
+
 // ActiveJobs reports how many schedules are currently registered as live cron
 // jobs — for status display and tests.
 func (s *Scheduler) ActiveJobs() int {

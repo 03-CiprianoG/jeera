@@ -12,10 +12,12 @@ import (
 	"github.com/03-CiprianoG/jeera/internal/tui/theme"
 )
 
-const columnGutter = 1
+const columnGutter = 3
 
 // renderBoard draws the kanban columns (or an empty state) in a region exactly
-// `height` rows tall, so the footer stays pinned to the bottom.
+// `height` rows tall, so the footer stays pinned to the bottom. While a search
+// is live it heads the columns with a filter header — the same one the Backlog
+// wears — or shows a dead-end when nothing matches.
 func (m Model) renderBoard(height int) string {
 	t := m.theme
 	if m.active.ID == 0 {
@@ -25,6 +27,20 @@ func (m Model) renderBoard(height int) string {
 		return m.center(t.Empty.Render("This project has no columns."), height)
 	}
 
+	if m.boardQuery != "" {
+		matched := countCards(m.board)
+		if matched == 0 {
+			return m.center(m.searchEmpty(m.boardQuery), height)
+		}
+		header := filterHeader(t, "Board", m.boardQuery, matched, m.boardTotal, m.width)
+		return fitHeight(lipgloss.JoinVertical(lipgloss.Left, header, "", m.renderColumns(max(0, height-2))), height)
+	}
+	return m.renderColumns(height)
+}
+
+// renderColumns lays the kanban lanes side by side in a region exactly `height`
+// rows tall.
+func (m Model) renderColumns(height int) string {
 	n := len(m.board.columns)
 	colW := (m.width - (n-1)*columnGutter) / n
 	if colW < 16 {
@@ -34,7 +50,7 @@ func (m Model) renderBoard(height int) string {
 	blocks := make([]string, 0, n*2)
 	for i, col := range m.board.columns {
 		if i > 0 {
-			blocks = append(blocks, fitHeight(" ", height)) // gutter column
+			blocks = append(blocks, fitHeight(strings.Repeat(" ", columnGutter), height)) // gutter column
 		}
 		blocks = append(blocks, m.renderColumn(col, i, colW, height))
 	}
@@ -61,20 +77,128 @@ func (m Model) renderColumn(col column, idx, colW, height int) string {
 	header := spread(dot+" "+name, count, colW)
 	rule := lipgloss.NewStyle().Foreground(t.P.Border).Render(strings.Repeat("─", colW))
 
-	lines := []string{header, rule}
+	// Render every card into a block and measure it: cards are variable-height
+	// bordered boxes, so the column scrolls by whole cards rather than a fixed
+	// count. The "+ New issue" affordance is the slot one past the last card on the
+	// To Do column — new work enters the board there, so the downstream lanes stay
+	// free of a create action that never made sense on them. It scrolls with the
+	// cards so it stays reachable however tall the lane grows.
+	blocks := make([]string, 0, len(col.cards)+1)
 	for ci, iss := range col.cards {
 		selected := idx == m.colIdx && ci == m.cardIdx
-		lines = append(lines, m.renderCard(iss, selected, colW))
+		blocks = append(blocks, m.renderCard(iss, selected, colW))
 	}
-	// The "+ New issue" affordance is the slot one past the last card on the To Do
-	// column — new work enters the board there, so the downstream lanes stay free
-	// of a create action that never made sense on them.
 	if m.columnHasAddCard(idx) {
 		addSel := idx == m.colIdx && m.cardIdx == len(col.cards)
-		lines = append(lines, m.renderAddCard(colW, addSel))
+		blocks = append(blocks, m.renderAddCard(colW, addSel))
 	}
-	col2 := lipgloss.JoinVertical(lipgloss.Left, lines...)
-	return fitHeight(col2, height)
+
+	lines := append([]string{header, rule}, m.windowCards(blocks, len(col.cards), idx, colW, max(0, height-2))...)
+	return fitHeight(lipgloss.JoinVertical(lipgloss.Left, lines...), height)
+}
+
+// windowCards returns the visible run of a column's rendered card blocks,
+// scrolled so the selection stays on screen and topped or tailed with a quiet
+// "N more" hint when the cards overflow `budget` rows. Only the active column has
+// a live cursor; the rest window from the top. cardCount is the number of real
+// cards in blocks — the trailing "+ New issue" slot, when present, scrolls with
+// them but is named, not counted, in the hint.
+func (m Model) windowCards(blocks []string, cardCount, colIdx, colW, budget int) []string {
+	n := len(blocks)
+	if n == 0 || budget < 1 {
+		return nil
+	}
+	heights := make([]int, n)
+	total := 0
+	for i, b := range blocks {
+		heights[i] = lipgloss.Height(b)
+		total += heights[i]
+	}
+	if total <= budget {
+		return blocks // everything fits — no scroll, no hint
+	}
+
+	cursor := 0 // inactive lanes have no selection, so they rest at the top
+	if colIdx == m.colIdx {
+		cursor = m.cardIdx
+	}
+
+	// Each hint costs a row, which shrinks the room for cards — so reserve, window,
+	// and repeat until the reserved count matches what the window actually needs.
+	// It converges within two passes (adding a hint only ever drops cards, never
+	// adds them back), so the third iteration is a belt-and-braces stop.
+	top, bottom := 0, 0
+	var start, end int
+	for i := 0; i < 3; i++ {
+		start, end = cardWindow(heights, cursor, max(1, budget-top-bottom))
+		nt, nb := 0, 0
+		if start > 0 {
+			nt = 1
+		}
+		if end < n {
+			nb = 1
+		}
+		if nt == top && nb == bottom {
+			break
+		}
+		top, bottom = nt, nb
+	}
+
+	out := make([]string, 0, (end-start)+top+bottom)
+	if top == 1 {
+		out = append(out, m.scrollHint(fmt.Sprintf("⌃ %d more", start), colW))
+	}
+	out = append(out, blocks[start:end]...)
+	if bottom == 1 {
+		if hidden := cardCount - end; hidden > 0 {
+			out = append(out, m.scrollHint(fmt.Sprintf("⌄ %d more", hidden), colW))
+		} else {
+			// Only the "+ New issue" slot is below the fold — name it rather than
+			// counting it, so the create action keeps its label wherever it appears.
+			out = append(out, m.scrollHint("⌄ "+iconAdd+" New issue", colW))
+		}
+	}
+	return out
+}
+
+// cardWindow returns the [start, end) range of blocks to show so the block at
+// `cursor` stays fully visible within `budget` rows, given each block's height.
+// It is the height-aware sibling of scrollWindow, for the board's multi-line
+// cards: it keeps whole cards (never slicing a border) and scrolls only as far as
+// needed to keep the selection on screen.
+func cardWindow(heights []int, cursor, budget int) (int, int) {
+	n := len(heights)
+	if n == 0 {
+		return 0, 0
+	}
+	if budget < 1 {
+		budget = 1
+	}
+	if cursor < 0 {
+		cursor = 0
+	}
+	if cursor >= n {
+		cursor = n - 1
+	}
+	start, end := cursor, cursor+1
+	used := heights[cursor]
+	// Grow upward first, so a descending cursor rides the bottom edge (matching
+	// scrollWindow's feel), then fill any remaining budget downward.
+	for start > 0 && used+heights[start-1] <= budget {
+		start--
+		used += heights[start]
+	}
+	for end < n && used+heights[end] <= budget {
+		used += heights[end]
+		end++
+	}
+	return start, end
+}
+
+// scrollHint renders a column's quiet "N more" overflow affordance, centred in
+// the column width.
+func (m Model) scrollHint(text string, colW int) string {
+	return m.theme.ScrollHint.Width(colW).Render(truncate(text, colW))
 }
 
 // ghostBorder is a dashed rounded frame — the "empty slot" look for the
@@ -101,9 +225,11 @@ func (m Model) renderAddCard(colW int, selected bool) string {
 
 // columnHasAddCard reports whether a column shows the "+ New issue" affordance.
 // Only To Do (todo-category) columns do: new work enters the board there, so the
-// downstream lanes never carry a create action that didn't belong on them.
+// downstream lanes never carry a create action that didn't belong on them. It is
+// hidden while a search is live — a filtered board is for finding, not creating,
+// and a fresh issue would likely fall outside the filter and vanish.
 func (m Model) columnHasAddCard(idx int) bool {
-	return idx >= 0 && idx < len(m.board.columns) &&
+	return m.boardQuery == "" && idx >= 0 && idx < len(m.board.columns) &&
 		m.board.columns[idx].status.Category == core.CategoryTodo
 }
 
@@ -207,6 +333,10 @@ func (m Model) updateBoard(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch {
+	case key.Matches(msg, m.keys.Search):
+		return m.openSearch()
+	case msg.String() == "esc" && m.boardQuery != "":
+		return m.applySearch(viewBoard, "") // esc lifts a live filter
 	case key.Matches(msg, m.keys.Up):
 		m.cardIdx--
 		m.clampSelection()

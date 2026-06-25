@@ -2,6 +2,7 @@ package tui
 
 import (
 	"flag"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -11,6 +12,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
+	"github.com/03-CiprianoG/jeera/internal/config"
 	"github.com/03-CiprianoG/jeera/internal/core"
 	"github.com/03-CiprianoG/jeera/internal/store"
 )
@@ -29,7 +31,11 @@ func newTestModel(t *testing.T) (Model, *store.Store) {
 		t.Fatalf("store.Open: %v", err)
 	}
 	t.Cleanup(func() { _ = st.Close() })
-	m := New(st, nil, nil, nil, nil)
+	// A temp config keeps tests hermetic — they never read or write the user's real
+	// config, so renders that depend on it (the default-project chip) stay
+	// deterministic regardless of the machine running them.
+	cfg, _ := config.NewStore(filepath.Join(t.TempDir(), "config.toml"))
+	m := New(st, nil, nil, nil, cfg)
 	m.width, m.height = 100, 30
 	return m, st
 }
@@ -72,6 +78,10 @@ func keyPress(s string) tea.KeyPressMsg {
 		return tea.KeyPressMsg{Code: tea.KeyRight}
 	case "backspace":
 		return tea.KeyPressMsg{Code: tea.KeyBackspace}
+	case "/":
+		return tea.KeyPressMsg{Code: '/', Text: "/"}
+	case "super+f": // ⌘F
+		return tea.KeyPressMsg{Code: 'f', Mod: tea.ModSuper}
 	}
 	return tea.KeyPressMsg{Code: []rune(s)[0], Text: s}
 }
@@ -86,6 +96,28 @@ func render(m Model) string {
 }
 
 func stripANSI(s string) string { return ansiRE.ReplaceAllString(s, "") }
+
+// captureOutput runs fn with os.Stdout redirected to a pipe and returns whatever
+// fn wrote — used to assert on the raw OSC sequences the title commands emit.
+func captureOutput(t *testing.T, fn func()) string {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("os.Pipe: %v", err)
+	}
+	orig := os.Stdout
+	os.Stdout = w
+	defer func() { os.Stdout = orig }()
+
+	fn()
+	_ = w.Close()
+
+	var sb strings.Builder
+	if _, err := io.Copy(&sb, r); err != nil {
+		t.Fatalf("read captured output: %v", err)
+	}
+	return sb.String()
+}
 
 // goldenFile compares got against testdata/<name>.golden (or rewrites it with
 // -update).

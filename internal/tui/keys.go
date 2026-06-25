@@ -19,6 +19,7 @@ type keyMap struct {
 	Enter     key.Binding
 	Assign    key.Binding
 	Cycle     key.Binding
+	Search    key.Binding
 	Unsprint  key.Binding
 	NextView  key.Binding
 	PrevView  key.Binding
@@ -48,7 +49,13 @@ func newKeyMap() keyMap {
 		Enter:     key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open")),
 		Assign:    key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "assign")),
 		Cycle:     key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "start/finish")),
-		Unsprint:  key.NewBinding(key.WithKeys("backspace"), key.WithHelp("⌫", "to backlog")),
+		// Find on the Board and Backlog. ⌘F (super+f) is the headline — it stands in
+		// for the terminal's own find on terminals that speak the Kitty keyboard
+		// protocol and don't reserve the Command key (Bubble Tea requests key
+		// disambiguation by default, so they forward it). "/" is the universal
+		// fallback for terminals — like Apple Terminal — that always eat ⌘F.
+		Search:   key.NewBinding(key.WithKeys("super+f", "/"), key.WithHelp("⌘f /", "search")),
+		Unsprint: key.NewBinding(key.WithKeys("backspace"), key.WithHelp("⌫", "to backlog")),
 		// ⌥tab (option+tab) walks the navbar; tab itself is left for in-view focus.
 		NextView: key.NewBinding(key.WithKeys("alt+tab"), key.WithHelp("⌥tab", "next view")),
 		PrevView: key.NewBinding(key.WithKeys("alt+shift+tab"), key.WithHelp("⌥⇧tab", "prev view")),
@@ -69,7 +76,7 @@ func newKeyMap() keyMap {
 func (k keyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
 		{k.NextView, k.PrevView, k.Up, k.Down, k.Left, k.Right},
-		{k.Enter, k.Edit, k.Delete, k.MoveLeft, k.MoveRight},
+		{k.Enter, k.Search, k.Edit, k.Delete, k.MoveLeft, k.MoveRight},
 		{k.New, k.Assign, k.Cycle, k.Resume, k.Watch},
 		{k.Project, k.MCP, k.Settings, k.Refresh, k.Help, k.Quit},
 	}

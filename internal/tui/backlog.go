@@ -73,6 +73,10 @@ func (m Model) selectedBacklogIssue() (core.Issue, bool) {
 // unsprinted issues, open one, create a new one, or assign one to a sprint.
 func (m Model) updateBacklog(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch {
+	case key.Matches(msg, m.keys.Search):
+		return m.openSearch()
+	case msg.String() == "esc" && m.backlogQuery != "":
+		return m.applySearch(viewBacklog, "") // esc lifts a live filter
 	case key.Matches(msg, m.keys.Up):
 		m.backlogSel--
 		m.clampBacklogSel()
@@ -102,17 +106,30 @@ func (m Model) updateBacklog(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 }
 
 // renderBacklog draws the unsprinted issues in a region exactly height rows tall,
-// scrolling so the selection stays on screen.
+// scrolling so the selection stays on screen. A live search swaps the section
+// heading for a filter header naming the query and an "N of M" count (and a
+// dead-end when nothing matches), so the list never shifts as a filter toggles.
 func (m Model) renderBacklog(height int) string {
 	t := m.theme
 	if m.active.ID == 0 {
 		return m.center(t.Empty.Render("Create a project to triage a backlog."), height)
 	}
-	if len(m.backlog.issues) == 0 {
+	if m.backlogTotal == 0 {
 		return m.center(m.backlogEmpty(), height)
 	}
+	if m.backlogQuery != "" && len(m.backlog.issues) == 0 {
+		return m.center(m.searchEmpty(m.backlogQuery), height)
+	}
 
-	lines := []string{sectionHeader(t, "Backlog", fmt.Sprintf("%d unsprinted", len(m.backlog.issues))), ""}
+	// The filter header stands in for the ordinary "Backlog" heading while a
+	// search is live, so the list keeps the same single header row either way —
+	// folding the true total into its "N of M" count rather than stacking a
+	// second line above the rows.
+	header := sectionHeader(t, "Backlog", fmt.Sprintf("%d unsprinted", m.backlogTotal))
+	if m.backlogQuery != "" {
+		header = filterHeader(t, "Backlog", m.backlogQuery, len(m.backlog.issues), m.backlogTotal, m.width)
+	}
+	lines := []string{header, ""}
 	start, end := scrollWindow(m.backlogSel, len(m.backlog.issues), height-2)
 	for i := start; i < end; i++ {
 		lines = append(lines, m.renderIssueRow(m.backlog.issues[i], i == m.backlogSel, m.backlog.statuses, 2))

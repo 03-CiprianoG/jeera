@@ -34,6 +34,11 @@ type Config struct {
 	// MCPPort is the preferred MCP server port (0 = use the built-in default and
 	// fall back to a free port if it is taken).
 	MCPPort int `toml:"mcp_port"`
+	// DefaultProjectPrefix is the key prefix of the project Jeera opens on
+	// startup. Empty means "the oldest project" (the historical behaviour). It is
+	// pinned by prefix, not ID, so it stays meaningful across machines and store
+	// rebuilds and survives the project being edited (the prefix is immutable).
+	DefaultProjectPrefix string `toml:"default_project_prefix"`
 }
 
 // Default returns the built-in configuration used when no file exists yet: the
@@ -129,6 +134,15 @@ func (s *Store) Save(cfg Config) error {
 	s.cfg = cfg
 	s.mu.Unlock()
 	return nil
+}
+
+// SetDefaultProject pins which project Jeera opens on startup, by its immutable
+// key prefix; an empty prefix clears the pin (revert to the oldest project). It
+// reads-modifies-writes the live config so every other setting is left untouched.
+func (s *Store) SetDefaultProject(prefix string) error {
+	cfg := s.Get()
+	cfg.DefaultProjectPrefix = prefix
+	return s.Save(cfg)
 }
 
 // RunSettings is the concrete result of resolving the cascade for one run.

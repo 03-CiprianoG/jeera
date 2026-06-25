@@ -19,6 +19,7 @@ type formKind int
 const (
 	formCreateIssue formKind = iota
 	formCreateProject
+	formEditProject
 	formRename
 	formCreateSprint
 )
@@ -61,14 +62,15 @@ func (f formField) value() string {
 // buttons (Create/Save, Cancel); choice fields cycle with ←/→, text fields edit
 // in place, and Enter submits from anywhere but the Cancel button.
 type formModel struct {
-	kind     formKind
-	heading  string
-	sub      string
-	submit   string // the primary button's label ("Create" / "Save")
-	fields   []formField
-	focus    int
-	issueID  int64 // target for formRename
-	statusID int64 // target column for a new issue (0 → the project's first status)
+	kind      formKind
+	heading   string
+	sub       string
+	submit    string // the primary button's label ("Create" / "Save")
+	fields    []formField
+	focus     int
+	issueID   int64 // target for formRename
+	projectID int64 // target for formEditProject
+	statusID  int64 // target column for a new issue (0 → the project's first status)
 }
 
 func newTextField(label, placeholder string, limit int) formField {
@@ -76,7 +78,7 @@ func newTextField(label, placeholder string, limit int) formField {
 	ti.Placeholder = placeholder
 	ti.CharLimit = limit
 	ti.Prompt = ""
-	ti.SetWidth(40)
+	ti.SetWidth(52)
 	return formField{label: label, ftype: fieldText, input: ti}
 }
 
@@ -85,7 +87,7 @@ func newDateField(label string) formField {
 	ti.Placeholder = "YYYY-MM-DD"
 	ti.CharLimit = 10
 	ti.Prompt = ""
-	ti.SetWidth(20)
+	ti.SetWidth(24)
 	return formField{label: label, ftype: fieldDate, input: ti}
 }
 
@@ -151,6 +153,24 @@ func newCreateProjectForm() *formModel {
 	}
 }
 
+// newEditProjectForm edits a project's mutable fields, pre-filled with its
+// current values. The key prefix is deliberately absent: issue keys depend on it,
+// so the store treats it as immutable — only the name and repo path can change.
+func newEditProjectForm(p core.Project) *formModel {
+	name := newTextField("Name", "Project name", 80)
+	name.input.SetValue(p.Name)
+	repo := newTextField("Repo path", "/path/to/repo", 300)
+	repo.input.SetValue(p.RepoPath)
+	return &formModel{
+		kind:      formEditProject,
+		heading:   "Edit " + p.KeyPrefix,
+		sub:       "Rename it or change its repo path.",
+		submit:    "Save",
+		fields:    []formField{name, repo},
+		projectID: p.ID,
+	}
+}
+
 func newRenameForm(iss core.Issue) *formModel {
 	f := newTextField("Title", "Title", 200)
 	f.input.SetValue(iss.Title)
@@ -213,14 +233,8 @@ func (f *formModel) update(msg tea.Msg) tea.Cmd {
 }
 
 func (f *formModel) View(t theme.Theme) string {
-	const labelW = 12
-	var b strings.Builder
-	b.WriteString(t.Title.Render(f.heading))
-	if f.sub != "" {
-		b.WriteString("\n" + t.HelpDesc.Render(f.sub))
-	}
-	b.WriteString("\n\n")
-
+	const labelW = 14
+	rows := make([]string, 0, len(f.fields))
 	for i := range f.fields {
 		fld := &f.fields[i]
 		focused := f.focus == i
@@ -244,23 +258,19 @@ func (f *formModel) View(t theme.Theme) string {
 				vs = vs.Foreground(t.PriorityColor(p))
 				disp = theme.PriorityGlyph(p) + " " + disp
 			}
-			if focused {
-				ch := lipgloss.NewStyle().Foreground(t.P.FocusGlow)
-				control = ch.Render(iconChevL+" ") + vs.Render(disp) + ch.Render(" "+iconChevR)
-			} else {
-				control = "  " + vs.Render(disp)
-			}
+			control = cycler(t, disp, vs, focused)
 		default:
 			control = "  " + fld.input.View()
 		}
-		b.WriteString(label + control + "\n")
+		rows = append(rows, label+control)
 	}
 
-	b.WriteString("\n")
-	buttons := buttonRow(t, []string{f.submit, "Cancel"}, f.buttonFocus())
-	b.WriteString(buttons)
-	b.WriteString("\n\n" + t.HelpDesc.Render("enter "+strings.ToLower(f.submit)+" · tab next · ←/→ change · esc cancel"))
-	return t.Modal.Width(60).Render(b.String())
+	// Fields breathe a row apart, then the action row sits below its own gap — the
+	// extra air is what makes the bigger frame read as deliberate, not empty.
+	body := strings.Join(rows, "\n\n") +
+		"\n\n\n" + buttonRow(t, []string{f.submit, "Cancel"}, f.buttonFocus())
+	hint := modalHint(t, "enter "+strings.ToLower(f.submit)+" · tab next · ←/→ change · esc cancel")
+	return modalShell(t, modalWidthForm, 0, f.heading, f.sub, body, hint)
 }
 
 // buttonFocus maps the focus index to the focused button (0 submit, 1 cancel),
@@ -342,6 +352,22 @@ func (m Model) submitForm() (tea.Model, tea.Cmd) {
 		m.active = p
 		m.closeForm()
 		return m, toast("created project " + p.KeyPrefix)
+
+	case formEditProject:
+		p, err := m.store.GetProject(f.projectID)
+		if err != nil {
+			return m, reportErr(err)
+		}
+		// Carry the name and repo path over the loaded project so its prefix and
+		// defaults are preserved; Validate (in UpdateProject) rejects an empty name
+		// or repo path and keeps the form open with the message.
+		p.Name = f.fields[0].value()
+		p.RepoPath = f.fields[1].value()
+		if err := m.store.UpdateProject(p); err != nil {
+			return m, reportErr(err)
+		}
+		m.closeForm()
+		return m, toast("updated " + p.KeyPrefix)
 
 	case formCreateIssue:
 		if f.fields[0].value() == "" {

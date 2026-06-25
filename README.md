@@ -57,27 +57,36 @@ Jeera is **local-first** and the **system of record**: it *owns* your tickets. A
 
 `jeera` starts **two front-ends over one core** in a single process — a Bubble Tea board and an HTTP MCP server — backed by a shared store, an execution engine, and a scheduler that drive your local AI CLIs.
 
-```
-                  ┌──────────────────────────────────────────────┐
-   You  ────────► │                    jeera                      │ ◄──── AI agents
-  (keyboard)      │                                              │      (Claude Code,
-                  │   ┌──────────┐              ┌─────────────┐  │       Cursor, cron…)
-                  │   │   TUI    │              │     MCP     │  │   via the Model
-                  │   │ Bubble   │              │   server    │  │   Context Protocol
-                  │   │  Tea v2  │              │   (HTTP)    │  │
-                  │   └────┬─────┘              └──────┬──────┘  │
-                  │        └──────────┬────────────────┘         │
-                  │              core + store                    │
-                  │          (one local source of truth)         │
-                  │        ┌──────────┴───────────┐              │
-                  │   ┌────┴─────┐          ┌──────┴──────┐       │
-                  │   │ execution│          │  scheduler  │       │
-                  │   │  engine  │          │  (cron)     │       │
-                  │   └────┬─────┘          └─────────────┘       │
-                  └────────┼─────────────────────────────────────┘
-                           ▼
-                  spawns  claude / codex  in a git worktree,
-                  pointed back at Jeera's own MCP server
+```mermaid
+flowchart TB
+    you["⌨ You · keyboard"]
+    agents["🤖 AI agents<br/>Claude Code · Cursor · cron"]
+
+    you ==> tui
+    agents -. "MCP over HTTP" .-> mcp
+
+    subgraph proc["jeera — a single process"]
+        direction TB
+        tui["TUI<br/>Bubble Tea v2 · your board"]
+        mcp["MCP server<br/>Streamable HTTP · the agents' board"]
+        core["core + store<br/>one local source of truth · SQLite"]
+        exec["execution engine<br/>run lifecycle · versioning"]
+        sched["scheduler · cron"]
+        tui --- core
+        mcp --- core
+        core --- exec
+        core --- sched
+    end
+
+    exec == "spawns" ==> agent["claude / codex<br/>in an isolated git worktree"]
+    agent -. "drives the ticket over" .-> mcp
+
+    classDef ext fill:#0c0d13,stroke:#8891D9,color:#8891D9;
+    classDef box fill:#1C1F2B,stroke:#3A3F52,color:#C7CBD9;
+    classDef heart fill:#232838,stroke:#8891D9,stroke-width:1.5px,color:#ffffff;
+    class you,agents,agent ext;
+    class tui,mcp,exec,sched box;
+    class core heart;
 ```
 
 | Command | What it does |
@@ -93,15 +102,15 @@ The TUI's footer always shows the live **MCP wire** — `● jeera 127.0.0.1:777
 
 ## A look around
 
-Every shot below is the real TUI over a seeded demo project — **Helios**, a realtime-analytics board with epics, sprints, bugs, links, attachments, scheduled runs and a flagship ticket (`HEL-18`).
+Every shot below is the real TUI over a seeded demo project — **Helios**, a realtime-analytics board with epics, sprints, bugs, links, attachments, scheduled runs and a flagship ticket (`HEL-17`).
 
 ### The ticket detail — a focusable "bento" of everything
 
 <div align="center">
-  <img src="docs/screens/ticket.png" alt="Ticket detail (bento) for HEL-18" width="100%" />
+  <img src="docs/screens/ticket.png" alt="Ticket detail (bento) for HEL-17" width="100%" />
 </div>
 
-> `HEL-18` open: rendered Markdown **Description**, a **Properties** panel (status · type · priority · points · sprint · epic · tags), an **Agent** panel (the model assignee, worktree toggle, and **Run / Discuss / Schedule**), **Activity** (human + agent-run comments) and **Relations & Files** (links + attachments). `tab` walks the panels; edits save instantly.
+> `HEL-17` open: rendered Markdown **Description**, a **Properties** panel (status · type · priority · points · sprint · epic · tags), an **Agent** panel (the model assignee, worktree toggle, and **Run / Discuss / Schedule**), **Activity** (human + agent-run comments) and **Relations & Files** (links + attachments). `tab` walks the panels; edits save instantly.
 
 ### Runs, Sprints & Backlog
 
@@ -124,6 +133,14 @@ Every shot below is the real TUI over a seeded demo project — **Helios**, a re
 </tr>
 </table>
 
+### Find anything — `⌘F` / `/`
+
+<div align="center">
+  <img src="docs/screens/search.png" alt="In-view search on the board" width="100%" />
+</div>
+
+> Press `⌘F` (or `/`, the universal fallback) on the **Board** or **Backlog** to filter to the issues matching *every* term — by key, title, description, type or assignee — with a live match count as you type. The filter rides through an agent's live edits, and the section heading turns into a filter header with an "N of M" count.
+
 <details>
 <summary><b>More views</b> — Settings cascade, Projects, the create-issue form, the Agent panel & the full keymap</summary>
 <br/>
@@ -134,7 +151,7 @@ Every shot below is the real TUI over a seeded demo project — **Helios**, a re
 </tr>
 <tr>
 <td valign="top"><b>Settings</b> (<code>,</code>) — the global run defaults a project or ticket can override.</td>
-<td valign="top"><b>Projects</b> (<code>p</code>) — switch between boards; each is bound to a git repo.</td>
+<td valign="top"><b>Projects</b> (<code>p</code>) — switch between boards, <b>edit</b> or <b>delete</b> them, and <b>pin a default</b> (★) that opens on startup; each is bound to a git repo.</td>
 </tr>
 <tr>
 <td width="50%"><img src="docs/screens/form.png" alt="Create-issue form" width="100%" /></td>
@@ -161,10 +178,11 @@ Every shot below is the real TUI over a seeded demo project — **Helios**, a re
 
 | Feature | | Notes |
 |---|:--:|---|
-| **Projects** bound to a git repo | ✅ | Each project points at a repository and owns a key prefix (`HEL-18`); switch between many |
+| **Projects** bound to a git repo | ✅ | Each owns a key prefix (`HEL-17`) and a repo; switch, **edit**, **delete**, and pin a **default** that opens on startup |
 | **Issues** — epics · stories · tasks · bugs · subtasks | ✅ | Markdown descriptions, per-project sequential keys |
-| **Kanban board** | ✅ | Status columns grouped into *To Do / In Progress / In Review / Done* lanes; move cards with `⇧+arrows` |
+| **Kanban board** | ✅ | *To Do / In Progress / In Review / Done* lanes; move cards with `⇧+arrows`; tall lanes scroll to keep the selection in view |
 | **Ticket detail "bento"** | ✅ | Markdown edit/preview + in-place editing of status, type, priority, points, sprint, epic, tags & assignee |
+| **In-view search** | ✅ | `⌘F` / `/` filters the Board or Backlog to issues matching *every* term — key, title, description, type or assignee |
 | **Backlog** view | ✅ | Every unsprinted issue in one list; assign straight to a sprint |
 | **Sprints** | ✅ | Time-boxed, *future / active / completed*, goals & date windows, backlog ↔ sprint |
 | **Priority · story points · tags** | ✅ | Five priority levels, point estimates, project-scoped colored labels |
@@ -214,7 +232,7 @@ Every shot below is the real TUI over a seeded demo project — **Helios**, a re
 
 ## Agent tools (MCP)
 
-Point any MCP client at the server (the TUI shows the live URL) and it gets **16 typed tools** over Streamable HTTP at `http://127.0.0.1:7777`. Agents address everything by human-readable identifiers — issues by `key` (`HEL-18`), projects by `key_prefix`, and statuses / sprints / epics / tags by **name**. Internal numeric IDs are never exposed.
+Point any MCP client at the server (the TUI shows the live URL) and it gets **16 typed tools** over Streamable HTTP at `http://127.0.0.1:7777`. Agents address everything by human-readable identifiers — issues by `key` (`HEL-17`), projects by `key_prefix`, and statuses / sprints / epics / tags by **name**. Internal numeric IDs are never exposed.
 
 | Tool | Category | Purpose |
 |---|---|---|
@@ -307,6 +325,7 @@ Jeera is keyboard-first. `⌥tab` switches the four top-level views; `tab` moves
 |---|---|
 | `⇧←` / `⇧→` (`H` / `L`) | move ticket to the adjacent column |
 | `e` · `x` | rename · delete the selected issue |
+| `⌘F` / `/` | search — filter the board to matching issues (`esc` clears) |
 | `enter` | open ticket detail (or the `+ New issue` slot) |
 
 **Backlog & Sprints**
@@ -316,7 +335,16 @@ Jeera is keyboard-first. `⌥tab` switches the four top-level views; `tab` moves
 | `a` | assign issue to a sprint (Backlog) · add/move issue (Sprints) |
 | `s` | advance a sprint's state — *future → active → completed* |
 | `⌫` | pull a sprinted issue back to the backlog |
+| `⌘F` / `/` | search the backlog |
 | `n` · `x` | new sprint · delete sprint |
+
+**Projects** (the `p` overlay)
+
+| Key | Action |
+|---|---|
+| `n` · `e` · `x` | new · edit · delete the selected project |
+| `d` | pin as the **default** that opens on startup |
+| `enter` | switch to the selected project |
 
 **Runs**
 

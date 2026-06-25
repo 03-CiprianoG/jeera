@@ -5,26 +5,26 @@
      ⠁                                                                                              
 ────────────────────────────────────────────────────────────────────────────────────────────────────
                                                                                                     
+                                                                                                    
+                                                                                                    
               ╭──────────────────────────────────────────────────────────────────────╮              
               │                                                                      │              
-              │  New issue                                                           │              
-              │  Title is all you need now — everything else is refinable.           │              
+              │  Edit JEE                                                            │              
+              │  Rename it or change its repo path.                                  │              
               │  ──────────────────────────────────────────────────────────────────  │              
               │                                                                      │              
-              │  Title           What needs doing?                                   │              
+              │  Name            Jeera                                               │              
               │                                                                      │              
-              │  Type            Task                                                │              
-              │                                                                      │              
-              │  Priority        ■ Medium                                            │              
-              │                                                                      │              
-              │  Description     Optional — add detail                               │              
+              │  Repo path       /tmp/jeera                                          │              
               │                                                                      │              
               │                                                                      │              
-              │    Create     Cancel                                                 │              
+              │    Save     Cancel                                                   │              
               │                                                                      │              
               │  ──────────────────────────────────────────────────────────────────  │              
-              │  enter create · tab next · ←/→ change · esc cancel                   │              
+              │  enter save · tab next · ←/→ change · esc cancel                     │              
               │                                                                      │              
               ╰──────────────────────────────────────────────────────────────────────╯              
+                                                                                                    
+                                                                                                    
                                                                                                     
  Jeera JEE                                                                       ● mcp off   ? help

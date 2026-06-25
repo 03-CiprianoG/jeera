@@ -111,8 +111,6 @@ func (s *settingsModel) save() {
 func (s *settingsModel) View() string {
 	t := s.theme
 	d := s.draft.Defaults
-	title := t.Title.Render("Settings — global defaults")
-	sub := t.HelpDesc.Render("Fallback run settings. A project or ticket can override any of these.")
 
 	rows := []struct {
 		label, value string
@@ -137,6 +135,8 @@ func (s *settingsModel) View() string {
 	}
 
 	port := t.HelpDesc.Render(fmt.Sprintf("MCP port: %s   (set JEERA_MCP_PORT or mcp_port in config.toml)", portLabel(s.draft.MCPPort)))
+	body := strings.Join(lines, "\n") + "\n\n" + port
+
 	hint := t.HelpKey.Render("j/k") + " " + t.HelpDesc.Render("field") + "   " +
 		t.HelpKey.Render("h/l") + " " + t.HelpDesc.Render("change") + "   " +
 		t.HelpKey.Render("esc") + " " + t.HelpDesc.Render("close")
@@ -144,9 +144,9 @@ func (s *settingsModel) View() string {
 		hint = t.Error.Render("! "+truncate(s.err, s.width/2)) + "   " + hint
 	}
 
-	body := lipgloss.JoinVertical(lipgloss.Left,
-		title, sub, "", strings.Join(lines, "\n"), "", port, "", hint)
-	return t.Modal.Render(body)
+	return modalShell(t, modalWidthSettings, 0, "Settings — global defaults",
+		"Fallback run settings. A project or ticket can override any of these.",
+		body, hint)
 }
 
 func onOff(b bool) string {

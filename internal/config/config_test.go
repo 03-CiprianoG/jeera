@@ -40,6 +40,33 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 	}
 }
 
+func TestSetDefaultProjectPersists(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.toml")
+	s, err := NewStore(path)
+	if err != nil {
+		t.Fatalf("NewStore: %v", err)
+	}
+	if err := s.SetDefaultProject("JEE"); err != nil {
+		t.Fatalf("SetDefaultProject: %v", err)
+	}
+	if got := s.Get().DefaultProjectPrefix; got != "JEE" {
+		t.Fatalf("in-memory default not set: %q", got)
+	}
+	// It must survive a reload from disk.
+	if reloaded, err := Load(path); err != nil {
+		t.Fatalf("Load: %v", err)
+	} else if reloaded.DefaultProjectPrefix != "JEE" {
+		t.Fatalf("default project not persisted: %q", reloaded.DefaultProjectPrefix)
+	}
+	// Clearing the pin persists as empty (revert to the oldest project).
+	if err := s.SetDefaultProject(""); err != nil {
+		t.Fatal(err)
+	}
+	if reloaded, _ := Load(path); reloaded.DefaultProjectPrefix != "" {
+		t.Fatalf("clearing the default should persist empty, got %q", reloaded.DefaultProjectPrefix)
+	}
+}
+
 // A partial file keeps built-in values for the fields it omits.
 func TestLoadPartialOverlaysDefaults(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.toml")

@@ -1,6 +1,7 @@
 package tui
 
 import (
+	_ "embed"
 	"image/color"
 	"strings"
 
@@ -9,6 +10,19 @@ import (
 
 	"github.com/03-CiprianoG/jeera/internal/tui/theme"
 )
+
+// logoMosaic is a 4-row braille render of Jeera's dragon mark, generated offline
+// from docs/logo.png with chafa (`--symbols braille --fg-only`). Braille packs
+// 2×4 sub-cells per character, so the dragon keeps its detail in a quarter the
+// rows a solid block render would need — a dotted constellation that reads as the
+// dragon while staying compact in the header. It is baked in 24-bit colour but
+// always rendered: Bubble Tea downsamples the colours to whatever the terminal
+// supports, so the mark shows everywhere rather than vanishing on lesser
+// terminals. Braille glyphs (U+2800–U+28FF) are broadly available in terminal
+// fonts; where they are not, the JEERA wordmark beside it still stands.
+//
+//go:embed logo_mark.ans
+var logoMosaic string
 
 // components.go is Jeera's shared TUI vocabulary: the navbar pills, the
 // inlaid-title bento panel, action buttons and the full-width selection row.
@@ -25,6 +39,7 @@ const (
 	iconSprints = "◴"
 	iconRuns    = "▶"
 	iconHelp    = "?"
+	iconSearch  = "⌕"
 	iconAdd     = "+"
 	iconEdit    = "✎"
 	iconRun     = "▶"
@@ -44,11 +59,32 @@ type navItem struct {
 	label string
 }
 
-// navbar renders the centered destination strip: a row of rounded pills, each
+// brandMark is Jeera's logotype: the name set in spaced, bold, uppercase iris —
+// a quiet wordmark that anchors the header's left edge while the navbar leads
+// from the right. The letter-spacing is what reads as "logo" rather than "label"
+// in a terminal that has no real display typeface.
+func brandMark(t theme.Theme) string {
+	return lipgloss.NewStyle().
+		Foreground(t.P.FocusGlow).
+		Bold(true).
+		Render("J E E R A")
+}
+
+// brandLogo is the full header brand: the dragon mosaic riding just left of the
+// JEERA wordmark, vertically centred against it. The mosaic is baked in 24-bit
+// colour, but it is always rendered — Bubble Tea's renderer downsamples the
+// colours to whatever the terminal supports (256, 16, …), so the dragon shows
+// everywhere rather than vanishing on non-truecolor terminals.
+func brandLogo(t theme.Theme) string {
+	word := brandMark(t)
+	return lipgloss.JoinHorizontal(lipgloss.Center, logoMosaic, "  "+word)
+}
+
+// navbar renders the header strip: the dragon-and-JEERA logo pinned to the left
+// edge and the destination pills right-aligned across the rest of the row, each
 // carrying an icon and a label, with the active one filled iris and a hairline
-// grounding it to the interface below. It is the app's primary wayfinding, so it
-// sits big and centered rather than tucked into a corner.
-func navbar(t theme.Theme, width int, items []navItem, active int) string {
+// grounding it to the interface below. Logo left, wayfinding right.
+func navbar(t theme.Theme, width int, items []navItem, active int, logo string) string {
 	pills := make([]string, 0, len(items))
 	for i, it := range items {
 		label := it.icon + "  " + it.label
@@ -80,7 +116,21 @@ func navbar(t theme.Theme, width int, items []navItem, active int) string {
 		blocks = append(blocks, p)
 	}
 	row := lipgloss.JoinHorizontal(lipgloss.Center, blocks...)
-	band := lipgloss.Place(width, lipgloss.Height(row), lipgloss.Center, lipgloss.Center, row)
+
+	// The band is as tall as the taller of the logo and the pills; the shorter
+	// of the two is vertically centred within it. The dragon mosaic is taller
+	// than the pill row, so it sets the height and the pills float centred.
+	bandH := max(lipgloss.Height(row), lipgloss.Height(logo))
+
+	// The header carries a 2-cell frame on each side (added back by Padding
+	// below), so logo + pills share the interior width.
+	innerW := max(0, width-4)
+	logoBlock := lipgloss.Place(lipgloss.Width(logo), bandH, lipgloss.Left, lipgloss.Center, logo)
+	navW := max(1, innerW-lipgloss.Width(logoBlock))
+	navBlock := lipgloss.Place(navW, bandH, lipgloss.Right, lipgloss.Center, row)
+
+	inner := lipgloss.JoinHorizontal(lipgloss.Center, logoBlock, navBlock)
+	band := lipgloss.NewStyle().Padding(0, 2).Render(inner)
 	rule := lipgloss.NewStyle().Foreground(t.P.Border).Render(strings.Repeat("─", max(0, width)))
 	return lipgloss.JoinVertical(lipgloss.Left, band, rule)
 }
@@ -232,6 +282,59 @@ func buttonRow(t theme.Theme, labels []string, focus int) string {
 	}
 	return lipgloss.JoinHorizontal(lipgloss.Top, parts...)
 }
+
+// --- modal shell -------------------------------------------------------------
+
+// modalShell assembles Jeera's standard dialog chrome so every overlay reads as
+// one family: a titled header, a hairline that separates it from the body, the
+// body itself (padded to a calm minimum so dialogs have presence), and a hint
+// footer beneath a second hairline. The two hairlines are the only structural
+// flourish — quiet, in the subtle border tone — and they zone the dialog into
+// header / body / footer the way a well-set form does.
+//
+// width is the modal's full width (rounded border + Padding(1,2) included);
+// minBodyH floors the body slot's height. subtitle is plain text (styled here);
+// hint is rendered by the caller so it can mix accents (use modalHint for the
+// common dim form). Pass an empty subtitle or hint to drop that line.
+func modalShell(t theme.Theme, width, minBodyH int, title, subtitle, body, hint string) string {
+	inner := width - 6 // RoundedBorder (2 cols) + Padding(1,2) (4 cols)
+	if inner < 1 {
+		inner = 1
+	}
+	rule := lipgloss.NewStyle().Foreground(t.P.Border).Render(strings.Repeat("─", inner))
+
+	header := t.Title.Render(title)
+	if subtitle != "" {
+		header += "\n" + t.HelpDesc.Render(subtitle)
+	}
+
+	// Pad the body up to its floor so the dialog keeps a consistent, unhurried
+	// height regardless of how little it carries.
+	if pad := minBodyH - lipgloss.Height(body); pad > 0 {
+		body += strings.Repeat("\n", pad)
+	}
+
+	parts := []string{header, rule, "", body, "", rule}
+	if hint != "" {
+		parts = append(parts, hint)
+	}
+	return t.Modal.Width(width).Render(lipgloss.JoinVertical(lipgloss.Left, parts...))
+}
+
+// modalHint styles a footer hint in the standard quiet tone. Callers that mix
+// accented keys (y/n, ▸) build their own string instead.
+func modalHint(t theme.Theme, s string) string { return t.HelpDesc.Render(s) }
+
+// Standard dialog widths. Bigger than the content strictly needs — the extra
+// air is the point — and centralised so the family stays in proportion.
+const (
+	modalWidthForm     = 72
+	modalWidthList     = 64 // picker, projects, search
+	modalWidthConfirm  = 58
+	modalWidthSettings = 70
+	modalWidthMCP      = 80
+	modalWidthHelp     = 98
+)
 
 // --- value cycler ------------------------------------------------------------
 

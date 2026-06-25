@@ -183,6 +183,13 @@ func (m *Manager) resumeDir(r core.Run) (string, error) {
 	if project.RepoPath == "" {
 		return "", fmt.Errorf("project %s has no repo path set", project.KeyPrefix)
 	}
+	// The repo may have been moved or deleted since the run. Handing a
+	// non-existent directory to the terminal launcher fails opaquely (the child
+	// process can't chdir into it before exec), so check it here and surface a
+	// clear, actionable error instead.
+	if fi, err := os.Stat(project.RepoPath); err != nil || !fi.IsDir() {
+		return "", fmt.Errorf("project %s repo path %q no longer exists", project.KeyPrefix, project.RepoPath)
+	}
 	return project.RepoPath, nil
 }
 

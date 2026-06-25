@@ -262,6 +262,23 @@ func TestResumeCommandFallsBackToRepo(t *testing.T) {
 	}
 }
 
+func TestResumeCommandErrorsWhenRepoMissing(t *testing.T) {
+	m, st, _ := setup(t)
+	// A project whose repo path points at a directory that no longer exists,
+	// with a run that has no worktree to fall back to.
+	gone := filepath.Join(t.TempDir(), "deleted-repo")
+	p, _ := st.CreateProject(core.Project{Name: "Gone", KeyPrefix: "GON", RepoPath: gone})
+	iss, _ := st.CreateIssue(core.Issue{ProjectID: p.ID, Title: "x", Type: core.TypeStory})
+	r, _ := st.CreateRun(core.Run{
+		IssueID: iss.ID, Provider: core.ProviderClaude,
+		SessionID: "sess-x", Status: core.RunFailed,
+	})
+	_, err := m.ResumeCommand(r)
+	if err == nil || !strings.Contains(err.Error(), "no longer exists") {
+		t.Fatalf("resuming into a deleted repo should error clearly, got %v", err)
+	}
+}
+
 func TestResumeCommandCodex(t *testing.T) {
 	m, st, iss := setup(t)
 	r, _ := st.CreateRun(core.Run{

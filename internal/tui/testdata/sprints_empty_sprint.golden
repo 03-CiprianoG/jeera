@@ -2,6 +2,12 @@
                 │  ▦  Board  │   │  ≡  Backlog  │   │  ◴  Sprints  │   │  ▶  Runs  │                
                 ╰────────────╯   ╰──────────────╯   ╰──────────────╯   ╰───────────╯                
 ────────────────────────────────────────────────────────────────────────────────────────────────────
+  ● Sprint 1  active                                                                      2 issues  
+    ● ■ JEE-1     First issue                                                                       
+    ● ■ JEE-2     Second issue                                                                      
+                                                                                                    
+  ● Sprint 2  future                                                                      0 issues  
+      — no issues —                                                                                 
                                                                                                     
                                                                                                     
                                                                                                     
@@ -10,15 +16,9 @@
                                                                                                     
                                                                                                     
                                                                                                     
-                          ╭─────────────────────────────────────────────╮                           
-                          │                                             │                           
-                          │  MCP server                                 │                           
-                          │                                             │                           
-                          │  Started with --no-mcp; the server is off.  │                           
-                          │                                             │                           
-                          │  press any key to close                     │                           
-                          │                                             │                           
-                          ╰─────────────────────────────────────────────╯                           
+                                                                                                    
+                                                                                                    
+                                                                                                    
                                                                                                     
                                                                                                     
                                                                                                     

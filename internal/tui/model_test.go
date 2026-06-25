@@ -71,7 +71,7 @@ func TestSubmitCreateProject(t *testing.T) {
 	if m.active.RepoPath != "/repos/web-app" {
 		t.Errorf("repo path not captured: %q", m.active.RepoPath)
 	}
-	if m.mode != modeBoard {
+	if m.mode != modeNormal {
 		t.Errorf("form should close after submit, mode=%v", m.mode)
 	}
 	if len(m.projects) != 1 {
@@ -83,7 +83,7 @@ func TestSubmitCreateIssueSelectsResult(t *testing.T) {
 	m, st := newTestModel(t)
 	seedProject(t, st)
 	m.reload()
-	m.form = newCreateIssueForm()
+	m.form = newCreateIssueForm(0)
 	m.form.fields[0].SetValue("Ship it")
 	m.mode = modeForm
 

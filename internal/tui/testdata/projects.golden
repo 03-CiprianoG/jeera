@@ -1,5 +1,7 @@
-  Jeera  Jeera JEE                                                                        ● mcp off 
-                                                                                                    
+                ╭────────────╮   ╭──────────────╮   ╭──────────────╮   ╭───────────╮                
+                │  ▦  Board  │   │  ≡  Backlog  │   │  ◴  Sprints  │   │  ▶  Runs  │                
+                ╰────────────╯   ╰──────────────╯   ╰──────────────╯   ╰───────────╯                
+────────────────────────────────────────────────────────────────────────────────────────────────────
                                                                                                     
                                                                                                     
                                                                                                     
@@ -25,6 +27,4 @@
                                                                                                     
                                                                                                     
                                                                                                     
-                                                                                                    
-                                                                                                    
- ←/h prev column  →/l next column  ↑/k up  ↓/j down  n new  e rename  x delete  ? help  q quit
+  Jeera  Jeera JEE                                                               ● mcp off   ? help

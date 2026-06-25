@@ -54,7 +54,7 @@ func seedRuns(t *testing.T, m *Model) {
 func TestGoldenRuns(t *testing.T) {
 	m, _ := newTestModel(t)
 	seedRuns(t, &m)
-	m.mode = modeRuns
+	m.view = viewRuns
 	m.runsCursor = 0 // newest run (codex v2, no session) selected
 	goldenFile(t, "runs", render(m))
 }
@@ -62,7 +62,7 @@ func TestGoldenRuns(t *testing.T) {
 func TestRunsCursorNavigation(t *testing.T) {
 	m, _ := newTestModel(t)
 	seedRuns(t, &m) // two runs
-	m.mode = modeRuns
+	m.view = viewRuns
 
 	step := func(key string) {
 		next, _ := m.Update(keyPress(key))
@@ -87,20 +87,22 @@ func TestRunsCursorNavigation(t *testing.T) {
 	}
 }
 
-func TestRunsEscCloses(t *testing.T) {
+func TestRunsTabReturnsToBoard(t *testing.T) {
 	m, _ := newTestModel(t)
 	seedRuns(t, &m)
-	m.mode = modeRuns
-	next, _ := m.Update(keyPress("esc"))
-	if next.(Model).mode != modeBoard {
-		t.Error("esc should close the Runs overlay back to the board")
+	m.view = viewRuns
+	// Runs is a peer view now, not a closeable overlay: Tab cycles
+	// board→sprints→runs→board, so from Runs it wraps back to the board.
+	next, _ := m.Update(keyPress("alt+tab"))
+	if got := next.(Model).view; got != viewBoard {
+		t.Errorf("tab from Runs should wrap to the board, got view %d", got)
 	}
 }
 
 func TestRunsResumeWithoutManagerErrors(t *testing.T) {
 	m, _ := newTestModel(t) // newTestModel wires a nil run manager
 	seedRuns(t, &m)
-	m.mode = modeRuns
+	m.view = viewRuns
 	_, cmd := m.Update(keyPress("t"))
 	if cmd == nil {
 		t.Fatal("t should produce a command even when it cannot resume")
@@ -125,7 +127,7 @@ func resumableSetup(t *testing.T) (Model, *store.Store) {
 	}
 	m.reload()
 	m.recentRuns, _ = st.ListRecentRuns(50)
-	m.mode = modeRuns
+	m.view = viewRuns
 	return m, st
 }
 
@@ -136,7 +138,7 @@ func TestRunsResumeNoSessionErrors(t *testing.T) {
 	st.CreateRun(core.Run{IssueID: iss.ID, Version: 1, Provider: core.ProviderClaude, Status: core.RunFailed}) // no session
 	m.reload()
 	m.recentRuns, _ = st.ListRecentRuns(50)
-	m.mode = modeRuns
+	m.view = viewRuns
 
 	// Both the 't' key and its 'enter' alias hit the same path and explain why.
 	for _, key := range []string{"t", "enter"} {
@@ -197,7 +199,7 @@ func TestRunsWatchTailsLog(t *testing.T) {
 	}
 	m.reload()
 	m.recentRuns, _ = st.ListRecentRuns(50)
-	m.mode = modeRuns
+	m.view = viewRuns
 
 	_, cmd := m.Update(keyPress("w"))
 	if cmd == nil {
@@ -222,21 +224,22 @@ func TestRunsWatchNoLogErrors(t *testing.T) {
 
 func TestRunsEmptyState(t *testing.T) {
 	m, _ := newTestModel(t)
-	m.mode = modeRuns
+	m.view = viewRuns
 	m.recentRuns = nil
 	out := render(m)
 	if !strings.Contains(out, "No runs yet") {
-		t.Error("an empty Runs overlay should say how to start one")
+		t.Error("an empty Runs view should say how to start one")
 	}
-	if strings.Contains(m.runsHint(), "resume") {
-		t.Error("an empty Runs overlay should not offer the resume action")
+	// The footer is contextual: with nothing to resume, it must not advertise it.
+	if strings.Contains(out, "resume") {
+		t.Error("an empty Runs view should not offer the resume action in the footer")
 	}
 }
 
 func TestRunsLiveReloadReanchorsCursor(t *testing.T) {
 	m, st := newTestModel(t)
 	seedRuns(t, &m) // [v2 (newest), v1]
-	m.mode = modeRuns
+	m.view = viewRuns
 	m.runsCursor = 1 // select v1 (the older claude run)
 	selID := m.recentRuns[1].ID
 	issID := m.recentRuns[0].IssueID
@@ -256,7 +259,7 @@ func TestRunsLiveReloadReanchorsCursor(t *testing.T) {
 func TestRunsClampOnShrink(t *testing.T) {
 	m, _ := newTestModel(t)
 	seedRuns(t, &m)
-	m.mode = modeRuns
+	m.view = viewRuns
 	m.runsCursor = 5 // out of range
 	m.clampRunsCursor()
 	if m.runsCursor != 1 {

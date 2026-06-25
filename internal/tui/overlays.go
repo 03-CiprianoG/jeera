@@ -22,7 +22,8 @@ func (m Model) renderHelp() string {
 		col := lipgloss.JoinVertical(lipgloss.Left, lines...)
 		cols = append(cols, lipgloss.NewStyle().MarginRight(3).Render(col))
 	}
-	body := t.Title.Render("Keys") + "\n\n" + lipgloss.JoinHorizontal(lipgloss.Top, cols...)
+	legend := t.HelpDesc.Render("⌥tab switches views · tab moves focus inside a view · ⇧+arrows move a ticket")
+	body := t.Title.Render("Keys") + "\n" + legend + "\n\n" + lipgloss.JoinHorizontal(lipgloss.Top, cols...)
 	body += "\n\n" + t.HelpDesc.Render("press any key to close")
 	return t.Modal.Render(body)
 }
@@ -90,7 +91,7 @@ func (m Model) renderProjects() string {
 func (m Model) updateProjects(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc", "q":
-		m.mode = modeBoard
+		m.mode = modeNormal
 	case "up", "k":
 		if m.projSel > 0 {
 			m.projSel--
@@ -107,7 +108,8 @@ func (m Model) updateProjects(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if m.projSel >= 0 && m.projSel < len(m.projects) {
 			m.active = m.projects[m.projSel]
 			m.colIdx, m.cardIdx = 0, 0
-			m.mode = modeBoard
+			m.backlogSel, m.sprintSel = 0, 0 // a new project has its own issues; don't carry old cursors
+			m.mode = modeNormal
 			m.reload()
 			return m, toast("switched to " + m.active.KeyPrefix)
 		}
@@ -133,12 +135,12 @@ func (m Model) updateConfirm(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if m.onConfirm != nil {
 			cmd = m.onConfirm()
 		}
-		m.mode = modeBoard
+		m.mode = modeNormal
 		m.onConfirm = nil
 		m.reload()
 		return m, cmd
 	case "n", "N", "esc", "q":
-		m.mode = modeBoard
+		m.mode = modeNormal
 		m.onConfirm = nil
 	}
 	return m, nil

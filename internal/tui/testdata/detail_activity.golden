@@ -2,22 +2,22 @@
 ╭─ DESCRIPTION ──────────────────────────────────────────────╮ ╭─ PROPERTIES ──────────────────────╮
 │ Build the board                                            │ │ Status     To Do                  │
 │                                                            │ │ Type       story                  │
-│                                                            │ │ Priority   △ high                 │
-│                                                            │ │ Points     5                      │
-│   ## Goal                                                  │ │ Sprint     —                      │
+│                                                            │ │ Priority   ■ medium               │
+│                                                            │ │ Points     —                      │
+│   No description yet. Press e to add one.                  │ │ Sprint     —                      │
 │                                                            │ │ Epic       —                      │
-│   Build a calm, keyboard-driven board.                     │ │ Tags       #ui                    │
+│                                                            │ │ Tags       —                      │
 │                                                            │ ╰───────────────────────────────────╯
-│   • columns by status                                      │ ╭─ AGENT ───────────────────────────╮
-│   • model-assignee cards                                   │ │ Provider   claude                 │
-│                                                            │ │ Model      opus                   │
-│                                                            │ │ Effort     high                   │
+│                                                            │ ╭─ AGENT ───────────────────────────╮
+│                                                            │ │ Provider   —                      │
+│                                                            │ │ Model      —                      │
+│                                                            │ │ Effort     —                      │
 │                                                            │ │ Worktree   on                     │
 │                                                   ✎ Edit   │ │                                   │
 ╰────────────────────────────────────────────────────────────╯ │   ▶ Run     ⑂ Children            │
 ╭─ ACTIVITY ─────────────────────────────────────────────────╮ │   ✦ Discuss     ⏱ Schedule        │
-│ human     Kicked off.                                      │ ╰───────────────────────────────────╯
-│                                                            │ ╭─ RELATIONS & FILES ───────────────╮
+│ human     Kicked off the work.                             │ ╰───────────────────────────────────╯
+│ claude    Moved it to In Progress.                         │ ╭─ RELATIONS & FILES ───────────────╮
 │                                                            │ │ Epic     —                        │
 │                                                            │ │ Parent   —                        │
 │                                                            │ │ FILES · 0                         │
@@ -27,4 +27,4 @@
 │                                                            │ │                                   │
 │                                                + Comment   │ │                                   │
 ╰────────────────────────────────────────────────────────────╯ ╰───────────────────────────────────╯
- tab panel  ↑↓ scroll  enter edit  esc back                                                         
+ tab panel  ↑↓ scroll  enter comment  esc back                                                      

@@ -16,18 +16,34 @@ import (
 	"github.com/03-CiprianoG/jeera/internal/tui/theme"
 )
 
+// mode is the transient layer on top of the active view: an overlay, the
+// full-screen detail, or modeNormal (nothing layered — show the active view).
 type mode int
 
 const (
-	modeBoard mode = iota
+	modeNormal mode = iota // no overlay; render the active view
 	modeForm
 	modeHelp
 	modeMCP
 	modeProjects
 	modeConfirm
 	modeDetail
-	modeRuns
+	modePicker
 	modeSettings
+)
+
+// view is the active top-level destination shown in the navbar. Unlike mode, a
+// view persists beneath any overlay: dismissing an overlay returns to whichever
+// view was showing, so the three destinations behave as peers rather than as
+// detours off the board.
+type view int
+
+const (
+	viewBoard view = iota
+	viewBacklog
+	viewSprints
+	viewRuns
+	viewCount
 )
 
 // Model is the root Bubble Tea model.
@@ -47,15 +63,21 @@ type Model struct {
 	projects   []core.Project
 	active     core.Project
 	board      boardData
+	backlog    backlogData
+	sprints    sprintsData
 	activeRuns int
 	recentRuns []core.Run
-	runsCursor int // selected row in the Runs overlay
+	runsCursor int // selected row in the Runs view
 
 	colIdx, cardIdx int
+	backlogSel      int // selected issue in the Backlog view
+	sprintSel       int // selected row (sprint header or issue) in the Sprints view
 
+	view      view
 	mode      mode
 	form      *formModel
 	detail    *detailModel
+	picker    *pickerModel // non-nil while a chooser overlay is open
 	confirm   string
 	onConfirm func() tea.Cmd
 	projSel   int
@@ -126,6 +148,7 @@ func (m *Model) reload() {
 	}
 	if m.active.ID == 0 {
 		m.board = boardData{}
+		m.refreshView()
 		return
 	}
 
@@ -140,6 +163,99 @@ func (m *Model) reload() {
 	} else {
 		m.clampSelection()
 	}
+	m.refreshView()
+}
+
+// refreshView reloads the auxiliary data backing the active non-board view, so
+// Sprints and Runs update live alongside the board after any store change. It is
+// a no-op on the board (whose data reload() already handles).
+func (m *Model) refreshView() {
+	switch m.view {
+	case viewBacklog:
+		prevID := int64(0)
+		if iss, ok := m.selectedBacklogIssue(); ok {
+			prevID = iss.ID
+		}
+		bl, err := loadBacklog(m.store, m.active.ID)
+		if err != nil {
+			m.errText = err.Error()
+			return
+		}
+		m.backlog = bl
+		if prevID != 0 {
+			for i, iss := range m.backlog.issues {
+				if iss.ID == prevID {
+					m.backlogSel = i
+					break
+				}
+			}
+		}
+		m.clampBacklogSel()
+	case viewSprints:
+		// Re-anchor the cursor by what it's on — a sprint header or an issue — so a
+		// live agent change that reorders the list doesn't slide the highlight onto a
+		// different row than the one the user selected.
+		var wantSprint, wantIssue int64
+		if it, ok := m.selectedSprintItem(); ok {
+			if it.kind == itemHeader {
+				wantSprint = it.sprint.ID
+			} else {
+				wantIssue = it.issue.ID
+			}
+		}
+		sp, err := loadSprints(m.store, m.active.ID)
+		if err != nil {
+			m.errText = err.Error()
+			return
+		}
+		m.sprints = sp
+		for i, it := range m.sprints.items() {
+			if (it.kind == itemHeader && wantSprint != 0 && it.sprint.ID == wantSprint) ||
+				(it.kind == itemIssue && wantIssue != 0 && it.issue.ID == wantIssue) {
+				m.sprintSel = i
+				break
+			}
+		}
+		m.clampSprintSel()
+	case viewRuns:
+		// Re-anchor the cursor by run ID: a run starting under an open Runs view
+		// prepends to the list, which would otherwise slide the cursor onto a
+		// different run.
+		prevID := int64(0)
+		if m.runsCursor >= 0 && m.runsCursor < len(m.recentRuns) {
+			prevID = m.recentRuns[m.runsCursor].ID
+		}
+		m.recentRuns, _ = m.store.ListRecentRuns(50)
+		m.runsCursor = 0
+		for i, r := range m.recentRuns {
+			if r.ID == prevID {
+				m.runsCursor = i
+				break
+			}
+		}
+		m.clampRunsCursor()
+	}
+}
+
+// switchView moves the active destination by delta (wrapping) and loads its data.
+func (m *Model) switchView(delta int) {
+	m.view = view((int(m.view) + delta + int(viewCount)) % int(viewCount))
+	m.refreshView()
+}
+
+// renderActiveView renders the body of the active destination into a region
+// exactly height rows tall.
+func (m Model) renderActiveView(height int) string {
+	switch m.view {
+	case viewBacklog:
+		return m.renderBacklog(height)
+	case viewSprints:
+		return m.renderSprints(height)
+	case viewRuns:
+		return m.renderRuns(height)
+	default:
+		return m.renderBoard(height)
+	}
 }
 
 func (m *Model) clampSelection() {
@@ -153,9 +269,11 @@ func (m *Model) clampSelection() {
 	if m.colIdx < 0 {
 		m.colIdx = 0
 	}
+	// cardIdx ranges 0..n, where n (one past the last card) is the column's
+	// "+ New issue" slot — always selectable, so an empty column still offers it.
 	n := len(m.board.columns[m.colIdx].cards)
-	if m.cardIdx >= n {
-		m.cardIdx = n - 1
+	if m.cardIdx > n {
+		m.cardIdx = n
 	}
 	if m.cardIdx < 0 {
 		m.cardIdx = 0
@@ -195,27 +313,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case storeEventMsg:
-		m.reload()
+		m.reload() // also refreshes the active Sprints/Runs view
 		if m.mode == modeDetail && m.detail != nil {
 			m.detail.reload()
-		}
-		if m.mode == modeRuns {
-			// Re-anchor the selection by run ID: a run starting while the overlay is
-			// open prepends to the list, which would otherwise slide the cursor onto
-			// a different run.
-			prevID := int64(0)
-			if m.runsCursor >= 0 && m.runsCursor < len(m.recentRuns) {
-				prevID = m.recentRuns[m.runsCursor].ID
-			}
-			m.recentRuns, _ = m.store.ListRecentRuns(50)
-			m.runsCursor = 0
-			for i, r := range m.recentRuns {
-				if r.ID == prevID {
-					m.runsCursor = i
-					break
-				}
-			}
-			m.clampRunsCursor()
 		}
 		return m, nil
 	case errMsg:
@@ -242,16 +342,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// routeDetail forwards a message to the detail view and returns to the board
-// when it signals done.
+// routeDetail forwards a message to the detail view and returns to the active
+// view when it signals done.
 func (m Model) routeDetail(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.detail == nil {
-		m.mode = modeBoard
+		m.mode = modeNormal
 		return m, nil
 	}
 	cmd, back := m.detail.Update(msg)
 	if back {
-		m.mode = modeBoard
+		m.mode = modeNormal
 		m.detail = nil
 		m.reload()
 	}
@@ -266,7 +366,7 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case modeForm:
 		return m.updateForm(msg)
 	case modeHelp, modeMCP:
-		m.mode = modeBoard // any key dismisses the overlay
+		m.mode = modeNormal // any key dismisses the overlay
 		return m, nil
 	case modeProjects:
 		return m.updateProjects(msg)
@@ -274,14 +374,27 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.updateConfirm(msg)
 	case modeDetail:
 		return m.routeDetail(msg)
-	case modeRuns:
-		return m.updateRuns(msg)
+	case modePicker:
+		return m.updatePicker(msg)
 	case modeSettings:
 		if m.settings != nil && m.settings.update(msg) {
 			m.settings = nil
-			m.mode = modeBoard
+			m.mode = modeNormal
 		}
 		return m, nil
+	}
+	// modeNormal: global keys (view-switch + overlays) win first, so they work
+	// from every view; then the active view handles its own navigation.
+	if next, cmd, handled := m.handleGlobalKey(msg); handled {
+		return next, cmd
+	}
+	switch m.view {
+	case viewBacklog:
+		return m.updateBacklog(msg)
+	case viewSprints:
+		return m.updateSprints(msg)
+	case viewRuns:
+		return m.updateRuns(msg)
 	default:
 		return m.updateBoard(msg)
 	}
@@ -305,9 +418,9 @@ func (m Model) View() tea.View {
 		v.BackgroundColor = m.theme.P.BgBase
 		return v
 	}
-	header := m.renderHeader()
+	nav := m.renderNavbar()
 	footer := m.renderFooter()
-	midHeight := m.height - lipgloss.Height(header) - lipgloss.Height(footer)
+	midHeight := m.height - lipgloss.Height(nav) - lipgloss.Height(footer)
 	if midHeight < 1 {
 		midHeight = 1
 	}
@@ -324,15 +437,15 @@ func (m Model) View() tea.View {
 		mid = m.center(m.renderProjects(), midHeight)
 	case modeConfirm:
 		mid = m.center(m.renderConfirm(), midHeight)
-	case modeRuns:
-		mid = m.renderRuns(midHeight)
+	case modePicker:
+		mid = m.center(m.picker.View(m.theme), midHeight)
 	case modeSettings:
 		mid = m.center(m.settings.View(), midHeight)
-	default:
-		mid = m.renderBoard(midHeight)
+	default: // modeNormal
+		mid = m.renderActiveView(midHeight)
 	}
 
-	content := lipgloss.JoinVertical(lipgloss.Left, header, mid, footer)
+	content := lipgloss.JoinVertical(lipgloss.Left, nav, mid, footer)
 	v := tea.NewView(content)
 	v.AltScreen = true
 	v.BackgroundColor = m.theme.P.BgBase

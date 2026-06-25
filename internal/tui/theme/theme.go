@@ -22,8 +22,10 @@ type Palette struct {
 	BgBase    color.Color // app background
 	BgSurface color.Color // raised panels (cards, columns)
 	BgOverlay color.Color // modals / overlays
+	BgSelect  color.Color // full-width fill behind the highlighted row, tinted toward iris
 	Border    color.Color // subtle separators and unfocused frames
 	Focus     color.Color // the single accent: focus, selection, the MCP wire
+	FocusGlow color.Color // a lifted iris for the active pill and the focused panel edge
 
 	TextPrimary color.Color
 	TextMuted   color.Color
@@ -48,6 +50,14 @@ type Theme struct {
 	StatusText lipgloss.Style
 	HelpKey    lipgloss.Style
 	HelpDesc   lipgloss.Style
+
+	// PanelTitle labels a bento panel or a section: small, tracked, quiet — it
+	// names the region without competing with its content.
+	PanelTitle lipgloss.Style
+	// Button and ButtonFocus render an action as a pill; the focused one carries
+	// the iris fill so the eye lands on what Enter will do.
+	Button      lipgloss.Style
+	ButtonFocus lipgloss.Style
 
 	Card         lipgloss.Style
 	CardSelected lipgloss.Style
@@ -76,8 +86,10 @@ func New() Theme {
 		BgBase:    lipgloss.Color("#14161F"),
 		BgSurface: lipgloss.Color("#1C1F2B"),
 		BgOverlay: lipgloss.Color("#232838"),
+		BgSelect:  lipgloss.Color("#2A2E48"),
 		Border:    lipgloss.Color("#2E3346"),
 		Focus:     lipgloss.Color("#8891D9"),
+		FocusGlow: lipgloss.Color("#AEB4F0"),
 
 		TextPrimary: lipgloss.Color("#E6E8F0"),
 		TextMuted:   lipgloss.Color("#9AA0B4"),
@@ -105,6 +117,10 @@ func build(p Palette) Theme {
 	t.StatusText = base.Foreground(p.TextMuted)
 	t.HelpKey = base.Foreground(p.Focus)
 	t.HelpDesc = base.Foreground(p.TextSubtle)
+
+	t.PanelTitle = base.Foreground(p.TextMuted)
+	t.Button = base.Foreground(p.TextMuted).Background(p.BgOverlay).Padding(0, 2)
+	t.ButtonFocus = base.Foreground(p.BgBase).Background(p.FocusGlow).Bold(true).Padding(0, 2)
 
 	t.Card = base.
 		Border(lipgloss.RoundedBorder()).
@@ -183,6 +199,19 @@ func PriorityGlyph(p core.Priority) string {
 		return "▽"
 	default:
 		return "▼"
+	}
+}
+
+// SprintStateColor returns the accent for a sprint's lifecycle state: the iris
+// focus for the live sprint, success for a finished one, muted for the future.
+func (t Theme) SprintStateColor(s core.SprintState) color.Color {
+	switch s {
+	case core.SprintActive:
+		return t.P.Focus
+	case core.SprintCompleted:
+		return t.P.Success
+	default: // future
+		return t.P.TextMuted
 	}
 }
 

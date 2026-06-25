@@ -2,29 +2,29 @@
 ╭─ DESCRIPTION ──────────────────────────────────────────────╮ ╭─ PROPERTIES ──────────────────────╮
 │ Build the board                                            │ │ Status     To Do                  │
 │                                                            │ │ Type       story                  │
-│                                                            │ │ Priority   △ high                 │
-│                                                            │ │ Points     5                      │
-│   ## Goal                                                  │ │ Sprint     —                      │
+│                                                            │ │ Priority   ■ medium               │
+│                                                            │ │ Points     —                      │
+│   No description yet. Press e to add one.                  │ │ Sprint     —                      │
 │                                                            │ │ Epic       —                      │
-│   Build a calm, keyboard-driven board.                     │ │ Tags       #ui                    │
+│                                                            │ │ Tags       —                      │
 │                                                            │ ╰───────────────────────────────────╯
-│   • columns by status                                      │ ╭─ AGENT ───────────────────────────╮
-│   • model-assignee cards                                   │ │ Provider   claude                 │
-│                                                            │ │ Model      opus                   │
-│                                                            │ │ Effort     high                   │
+│                                                            │ ╭─ AGENT ───────────────────────────╮
+│                                                            │ │ Provider   —                      │
+│                                                            │ │ Model      —                      │
+│                                                            │ │ Effort     —                      │
 │                                                            │ │ Worktree   on                     │
 │                                                   ✎ Edit   │ │                                   │
 ╰────────────────────────────────────────────────────────────╯ │   ▶ Run     ⑂ Children            │
 ╭─ ACTIVITY ─────────────────────────────────────────────────╮ │   ✦ Discuss     ⏱ Schedule        │
-│ human     Kicked off.                                      │ ╰───────────────────────────────────╯
+│ No activity yet — start the conversation.                  │ ╰───────────────────────────────────╯
 │                                                            │ ╭─ RELATIONS & FILES ───────────────╮
 │                                                            │ │ Epic     —                        │
 │                                                            │ │ Parent   —                        │
-│                                                            │ │ FILES · 0                         │
+│                                                            │ │ FILES · 2                         │
+│                                                            │ │ ◌ jeera-diagram.png               │
+│                                                            │ │ ↗ example.com/spec                │
 │                                                            │ │                                   │
 │                                                            │ │                        ◌ Attach   │
-│                                                            │ │                                   │
-│                                                            │ │                                   │
 │                                                + Comment   │ │                                   │
 ╰────────────────────────────────────────────────────────────╯ ╰───────────────────────────────────╯
- tab panel  ↑↓ scroll  enter edit  esc back                                                         
+ tab panel  ↑↓ select  enter open/attach  esc back                                                  

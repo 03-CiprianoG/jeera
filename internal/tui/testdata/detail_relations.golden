@@ -2,29 +2,29 @@
 ╭─ DESCRIPTION ──────────────────────────────────────────────╮ ╭─ PROPERTIES ──────────────────────╮
 │ Build the board                                            │ │ Status     To Do                  │
 │                                                            │ │ Type       story                  │
-│                                                            │ │ Priority   △ high                 │
-│                                                            │ │ Points     5                      │
-│   ## Goal                                                  │ │ Sprint     —                      │
-│                                                            │ │ Epic       —                      │
-│   Build a calm, keyboard-driven board.                     │ │ Tags       #ui                    │
+│                                                            │ │ Priority   ■ medium               │
+│                                                            │ │ Points     —                      │
+│   No description yet. Press e to add one.                  │ │ Sprint     —                      │
+│                                                            │ │ Epic       JEE-2                  │
+│                                                            │ │ Tags       —                      │
 │                                                            │ ╰───────────────────────────────────╯
-│   • columns by status                                      │ ╭─ AGENT ───────────────────────────╮
-│   • model-assignee cards                                   │ │ Provider   claude                 │
-│                                                            │ │ Model      opus                   │
-│                                                            │ │ Effort     high                   │
+│                                                            │ ╭─ AGENT ───────────────────────────╮
+│                                                            │ │ Provider   —                      │
+│                                                            │ │ Model      —                      │
+│                                                            │ │ Effort     —                      │
 │                                                            │ │ Worktree   on                     │
 │                                                   ✎ Edit   │ │                                   │
 ╰────────────────────────────────────────────────────────────╯ │   ▶ Run     ⑂ Children            │
 ╭─ ACTIVITY ─────────────────────────────────────────────────╮ │   ✦ Discuss     ⏱ Schedule        │
-│ human     Kicked off.                                      │ ╰───────────────────────────────────╯
+│ No activity yet — start the conversation.                  │ ╰───────────────────────────────────╯
 │                                                            │ ╭─ RELATIONS & FILES ───────────────╮
-│                                                            │ │ Epic     —                        │
+│                                                            │ │ Epic     JEE-2                    │
 │                                                            │ │ Parent   —                        │
+│                                                            │ │ CHILDREN · 1                      │
+│                                                            │ │ JEE-3 Render the columns          │
+│                                                            │ │ LINKS                             │
+│                                                            │ │ blocks JEE-4                      │
 │                                                            │ │ FILES · 0                         │
-│                                                            │ │                                   │
-│                                                            │ │                        ◌ Attach   │
-│                                                            │ │                                   │
-│                                                            │ │                                   │
 │                                                + Comment   │ │                                   │
 ╰────────────────────────────────────────────────────────────╯ ╰───────────────────────────────────╯
- tab panel  ↑↓ scroll  enter edit  esc back                                                         
+ tab panel  ↑↓ select  enter open/attach  esc back                                                  

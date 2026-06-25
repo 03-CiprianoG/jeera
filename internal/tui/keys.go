@@ -2,8 +2,10 @@ package tui
 
 import "charm.land/bubbles/v2/key"
 
-// keyMap is the global keymap. It implements help.KeyMap so the footer and the
-// help overlay render straight from these bindings — one source of truth.
+// keyMap is the global keymap and the single source of truth for the help
+// overlay, which renders straight from these bindings. Jeera is direct-
+// manipulation first: views switch with ⌥tab, tickets move with ⇧+arrows, and
+// tab is reserved for moving focus *inside* a view (form fields, ticket panels).
 type keyMap struct {
 	Up        key.Binding
 	Down      key.Binding
@@ -15,9 +17,15 @@ type keyMap struct {
 	Edit      key.Binding
 	Delete    key.Binding
 	Enter     key.Binding
+	Assign    key.Binding
+	Cycle     key.Binding
+	Unsprint  key.Binding
+	NextView  key.Binding
+	PrevView  key.Binding
 	Project   key.Binding
 	MCP       key.Binding
-	Runs      key.Binding
+	Resume    key.Binding
+	Watch     key.Binding
 	Settings  key.Binding
 	Refresh   key.Binding
 	Help      key.Binding
@@ -26,47 +34,43 @@ type keyMap struct {
 
 func newKeyMap() keyMap {
 	return keyMap{
-		Up:        key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑/k", "up")),
-		Down:      key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓/j", "down")),
-		Left:      key.NewBinding(key.WithKeys("left", "h"), key.WithHelp("←/h", "prev column")),
-		Right:     key.NewBinding(key.WithKeys("right", "l"), key.WithHelp("→/l", "next column")),
-		MoveLeft:  key.NewBinding(key.WithKeys("H", "shift+left"), key.WithHelp("H", "move left")),
-		MoveRight: key.NewBinding(key.WithKeys("L", "shift+right"), key.WithHelp("L", "move right")),
+		Up:    key.NewBinding(key.WithKeys("up", "k"), key.WithHelp("↑", "up")),
+		Down:  key.NewBinding(key.WithKeys("down", "j"), key.WithHelp("↓", "down")),
+		Left:  key.NewBinding(key.WithKeys("left", "h"), key.WithHelp("←", "prev column")),
+		Right: key.NewBinding(key.WithKeys("right", "l"), key.WithHelp("→", "next column")),
+		// Moving a ticket across columns is the board's one direct gesture: hold
+		// shift and steer. The vim H/L stay bound for muscle memory.
+		MoveLeft:  key.NewBinding(key.WithKeys("shift+left", "H"), key.WithHelp("⇧←", "move ticket")),
+		MoveRight: key.NewBinding(key.WithKeys("shift+right", "L"), key.WithHelp("⇧→", "move ticket")),
 		New:       key.NewBinding(key.WithKeys("n"), key.WithHelp("n", "new")),
 		Edit:      key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "rename")),
 		Delete:    key.NewBinding(key.WithKeys("x"), key.WithHelp("x", "delete")),
 		Enter:     key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "open")),
-		Project:   key.NewBinding(key.WithKeys("p"), key.WithHelp("p", "projects")),
-		MCP:       key.NewBinding(key.WithKeys("m"), key.WithHelp("m", "mcp")),
-		Runs:      key.NewBinding(key.WithKeys("R"), key.WithHelp("R", "runs")),
-		Settings:  key.NewBinding(key.WithKeys(","), key.WithHelp(",", "settings")),
-		Refresh:   key.NewBinding(key.WithKeys("r"), key.WithHelp("r", "refresh")),
-		Help:      key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
-		Quit:      key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),
+		Assign:    key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "assign")),
+		Cycle:     key.NewBinding(key.WithKeys("s"), key.WithHelp("s", "start/finish")),
+		Unsprint:  key.NewBinding(key.WithKeys("backspace"), key.WithHelp("⌫", "to backlog")),
+		// ⌥tab (option+tab) walks the navbar; tab itself is left for in-view focus.
+		NextView: key.NewBinding(key.WithKeys("alt+tab"), key.WithHelp("⌥tab", "next view")),
+		PrevView: key.NewBinding(key.WithKeys("alt+shift+tab"), key.WithHelp("⌥⇧tab", "prev view")),
+		Project:  key.NewBinding(key.WithKeys("p"), key.WithHelp("p", "projects")),
+		MCP:      key.NewBinding(key.WithKeys("m"), key.WithHelp("m", "mcp")),
+		Resume:   key.NewBinding(key.WithKeys("t"), key.WithHelp("t", "resume")),
+		Watch:    key.NewBinding(key.WithKeys("w"), key.WithHelp("w", "watch")),
+		Settings: key.NewBinding(key.WithKeys(","), key.WithHelp(",", "settings")),
+		Refresh:  key.NewBinding(key.WithKeys("r"), key.WithHelp("r", "refresh")),
+		Help:     key.NewBinding(key.WithKeys("?"), key.WithHelp("?", "help")),
+		Quit:     key.NewBinding(key.WithKeys("q", "ctrl+c"), key.WithHelp("q", "quit")),
 	}
 }
 
-// ShortHelp is the one-line footer.
-func (k keyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Left, k.Right, k.Up, k.Down, k.New, k.MoveLeft, k.MoveRight, k.Help, k.Quit}
-}
-
-// navHints are the bindings shown in the footer before the reserved help/quit
-// tail, in priority order (earlier ones survive a tight width).
-func (m Model) navHints() []key.Binding {
-	return []key.Binding{
-		m.keys.Left, m.keys.Right, m.keys.Up, m.keys.Down,
-		m.keys.New, m.keys.Edit, m.keys.Delete, m.keys.Enter,
-		m.keys.MoveLeft, m.keys.MoveRight, m.keys.Project, m.keys.MCP, m.keys.Runs, m.keys.Settings, m.keys.Refresh,
-	}
-}
-
-// FullHelp is the expanded help overlay, grouped into columns.
+// FullHelp is the expanded help overlay, grouped the way the app is used:
+// wayfinding, the board's direct gestures, creating and running work, then the
+// global utilities.
 func (k keyMap) FullHelp() [][]key.Binding {
 	return [][]key.Binding{
-		{k.Up, k.Down, k.Left, k.Right},
-		{k.New, k.Edit, k.Delete, k.Enter},
-		{k.MoveLeft, k.MoveRight, k.Project},
-		{k.MCP, k.Runs, k.Settings, k.Refresh, k.Help, k.Quit},
+		{k.NextView, k.PrevView, k.Up, k.Down, k.Left, k.Right},
+		{k.Enter, k.Edit, k.Delete, k.MoveLeft, k.MoveRight},
+		{k.New, k.Assign, k.Cycle, k.Resume, k.Watch},
+		{k.Project, k.MCP, k.Settings, k.Refresh, k.Help, k.Quit},
 	}
 }

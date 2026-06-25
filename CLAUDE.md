@@ -59,6 +59,11 @@ go run .           # run TUI + MCP server
 4. **Test every function, render, and output.** Unit-test all domain/store logic; snapshot/golden-test every TUI `View()` render; assert on every MCP tool's output. A change is **not done** until its behavior is proven by a passing test.
 
 ## Workflow
-- `main` is protected: land changes via **pull request**; CI (`build`) must pass; linear history; no force-push.
+Two long-lived branches:
+- **`main`** — the stable, released line. Every commit on `main` is a released version tagged `vX.Y.Z`; pushing the tag triggers GoReleaser (`.github/workflows/release.yml`). `main` is protected: PR-only, CI (`build`) must pass, **squash merges only**, linear history, no force-push. Never commit straight to `main`.
+- **`dev`** — the integration branch where day-to-day work lands. Branch features off `dev` and merge them back via PR with **base `dev`** (`gh pr create --base dev`); CI runs on every PR.
+
+**Cutting a release:** open a PR from `dev` → `main`, squash-merge it, then tag `main` with the new `vX.Y.Z` (semver: `feat` → minor, `fix` → patch, breaking → major) and push the tag to publish. Only ever tag a commit that is on `main`. Afterwards resync `dev` with the released `main` (`git switch dev && git merge main`) so the next release diff is clean.
+
 - Use **Conventional Commits** (`feat:`, `fix:`, `docs:`, `test:`, `refactor:`, `chore:`).
 - Run `go build ./... && go vet ./... && go test ./...` before every commit.

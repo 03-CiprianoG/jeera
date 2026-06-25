@@ -18,8 +18,9 @@ import (
 	"github.com/03-CiprianoG/jeera/internal/tui/theme"
 )
 
-// detailField enumerates the editable metadata fields in the sidebar, navigated
-// with j/k and cycled with h/l.
+// detailField enumerates the editable metadata values. The Properties panel
+// owns the first group; the Agent panel owns the assignee triple. cycleField
+// (detail_fields.go) acts on whichever one `field` points at.
 type detailField int
 
 const (
@@ -54,10 +55,43 @@ const (
 	ikAttach
 )
 
-// detailModel is the full-screen ticket view: a Glamour-rendered, scrollable
-// description on the left, an editable metadata sidebar on the right, and the
-// activity timeline below. Edits persist to the store immediately and the view
-// reloads, so it stays consistent with concurrent agent changes.
+// detailPanel is one focusable region of the ticket bento. TAB walks them and
+// the focused one wears the iris border; arrows act within it. There are no
+// tabs — every panel is on screen at once.
+type detailPanel int
+
+const (
+	panelDescription detailPanel = iota
+	panelProperties
+	panelAgent
+	panelRelations
+	panelActivity
+	panelCount
+)
+
+// propertyFields are the rows of the Properties panel, in display order.
+func propertyFields() []detailField {
+	return []detailField{dfStatus, dfType, dfPriority, dfPoints, dfSprint, dfEpic, dfTags}
+}
+
+// The Agent panel's rows: the assignee triple, the worktree toggle, then the
+// four action buttons. agentSel indexes this list.
+const (
+	agProvider = iota
+	agModel
+	agEffort
+	agWorktree
+	agRun
+	agChildren
+	agDiscuss
+	agSchedule
+	agRowCount
+)
+
+// detailModel is the full-screen ticket view: a bento of bordered panels —
+// Description, Properties, Agent, Relations & Files, Activity — each focusable
+// with TAB. Edits persist to the store immediately and the view reloads, so it
+// stays consistent with concurrent agent changes.
 type detailModel struct {
 	store  *store.Store
 	runMgr *run.Manager
@@ -67,11 +101,13 @@ type detailModel struct {
 	issueID int64
 	issue   core.Issue
 
-	statuses  []core.Status
-	sprints   []core.Sprint
-	epics     []core.Issue
-	issueTags []core.Tag
-	links     []store.LinkedIssue
+	statuses    []core.Status
+	sprints     []core.Sprint
+	epics       []core.Issue
+	issueTags   []core.Tag
+	links       []store.LinkedIssue
+	children    []core.Issue
+	parent      *core.Issue
 	comments    []core.Comment
 	runs        []core.Run
 	schedules   []core.Schedule
@@ -82,8 +118,12 @@ type detailModel struct {
 	input     textinput.Model
 	inputKind inputKind
 
-	mode  detailMode
-	field detailField
+	mode          detailMode
+	focus         detailPanel
+	field         detailField // selected metadata field (Properties + the Agent triple)
+	agentSel      int         // selected row in the Agent panel
+	attachSel     int         // selected row in Relations & Files (attachments + the Attach button)
+	commentScroll int         // Activity scroll offset
 
 	width, height int
 	err           string
@@ -99,44 +139,7 @@ func newDetail(st *store.Store, mgr *run.Manager, sched *schedule.Scheduler, th 
 
 func (d *detailModel) setSize(w, h int) {
 	d.width, d.height = w, h
-	d.vp.SetWidth(d.descWidth())
-	d.vp.SetHeight(d.descViewHeight())
 	d.renderDescription()
-}
-
-// descViewHeight is the scrollable description region, leaving 2 lines in the
-// left pane for the title.
-func (d *detailModel) descViewHeight() int {
-	h := d.bodyHeight() - 2
-	if h < 2 {
-		h = 2
-	}
-	return h
-}
-
-func (d *detailModel) descWidth() int {
-	w := d.width*62/100 - 2
-	if w < 20 {
-		w = 20
-	}
-	return w
-}
-
-func (d *detailModel) bodyHeight() int {
-	// header (1) + rule (1) + footer (1) + comments block (up to 6).
-	h := d.height - 3 - d.commentsHeight()
-	if h < 3 {
-		h = 3
-	}
-	return h
-}
-
-func (d *detailModel) commentsHeight() int {
-	n := len(d.comments)
-	if n > 4 {
-		n = 4
-	}
-	return n + 1 // title line
 }
 
 func (d *detailModel) reload() {
@@ -151,20 +154,36 @@ func (d *detailModel) reload() {
 	d.epics, _ = d.store.ListIssues(store.IssueFilter{ProjectID: iss.ProjectID, Type: core.TypeEpic})
 	d.issueTags, _ = d.store.ListIssueTags(iss.ID)
 	d.links, _ = d.store.ListLinks(iss.ID)
+	id := iss.ID
+	d.children, _ = d.store.ListIssues(store.IssueFilter{ProjectID: iss.ProjectID, ParentID: &id})
+	d.parent = nil
+	if iss.ParentID != nil {
+		if p, err := d.store.GetIssue(*iss.ParentID); err == nil {
+			d.parent = &p
+		}
+	}
 	d.comments, _ = d.store.ListComments(iss.ID)
 	d.runs, _ = d.store.ListRuns(iss.ID)
 	d.schedules, _ = d.store.ListSchedules(iss.ID)
 	d.attachments, _ = d.store.ListAttachments(iss.ID)
-	d.vp.SetHeight(d.descViewHeight())
+	if d.attachSel > len(d.attachments) {
+		d.attachSel = len(d.attachments)
+	}
+	if d.attachSel < 0 {
+		d.attachSel = 0
+	}
 	d.renderDescription()
 }
 
 func (d *detailModel) renderDescription() {
-	d.vp.SetContent(renderMarkdown(d.issue.Description, d.descWidth()))
+	iw := d.descInteriorWidth()
+	d.vp.SetWidth(iw)
+	d.vp.SetHeight(d.descViewportHeight())
+	d.vp.SetContent(renderMarkdown(d.issue.Description, iw))
 }
 
 // Update handles a message while the detail view is focused. It returns a
-// command and whether to return to the board.
+// command and whether to return to the active view.
 func (d *detailModel) Update(msg tea.Msg) (tea.Cmd, bool) {
 	switch d.mode {
 	case dEditDesc:
@@ -177,48 +196,91 @@ func (d *detailModel) Update(msg tea.Msg) (tea.Cmd, bool) {
 }
 
 func (d *detailModel) updateViewing(msg tea.Msg) (tea.Cmd, bool) {
-	key, ok := msg.(tea.KeyPressMsg)
+	k, ok := msg.(tea.KeyPressMsg)
 	if !ok {
 		var cmd tea.Cmd
 		d.vp, cmd = d.vp.Update(msg)
 		return cmd, false
 	}
 	d.notice = "" // a fresh keypress clears any transient confirmation
-	switch key.String() {
+	switch k.String() {
 	case "esc", "q":
 		return nil, true
-	case "j":
-		d.field = (d.field + 1) % dfFieldCount
-	case "k":
-		d.field = (d.field - 1 + dfFieldCount) % dfFieldCount
-	case "l", "right":
-		d.cycleField(+1)
-	case "h", "left":
-		d.cycleField(-1)
-	case "up", "down", "pgup", "pgdown", "ctrl+u", "ctrl+d":
+	case "tab":
+		d.focusPanel(+1)
+		return nil, false
+	case "shift+tab":
+		d.focusPanel(-1)
+		return nil, false
+	}
+	switch d.focus {
+	case panelDescription:
+		return d.keyDescription(k)
+	case panelProperties:
+		return d.keyProperties(k)
+	case panelAgent:
+		return d.keyAgent(k)
+	case panelRelations:
+		return d.keyRelations(k)
+	case panelActivity:
+		return d.keyActivity(k)
+	}
+	return nil, false
+}
+
+// focusPanel moves focus to the next/previous panel and lands its internal
+// cursor somewhere valid, so the arrow keys always have something to act on.
+func (d *detailModel) focusPanel(dir int) {
+	d.focus = detailPanel(wrap(int(d.focus)+dir, int(panelCount)))
+	switch d.focus {
+	case panelProperties:
+		if idxOf(propertyFields(), d.field) < 0 {
+			d.field = propertyFields()[0]
+		}
+	case panelAgent:
+		if d.agentSel < 0 || d.agentSel >= agRowCount {
+			d.agentSel = 0
+		}
+		d.syncAgentField()
+	}
+}
+
+// syncAgentField points `field` at the metadata field under the Agent cursor, so
+// cycleField changes the right value when the cursor is on the assignee triple.
+func (d *detailModel) syncAgentField() {
+	switch d.agentSel {
+	case agProvider:
+		d.field = dfProvider
+	case agModel:
+		d.field = dfModel
+	case agEffort:
+		d.field = dfEffort
+	}
+}
+
+func (d *detailModel) keyDescription(k tea.KeyPressMsg) (tea.Cmd, bool) {
+	switch k.String() {
+	case "up", "down", "pgup", "pgdown", "ctrl+u", "ctrl+d", "j", "k":
 		var cmd tea.Cmd
-		d.vp, cmd = d.vp.Update(msg)
+		d.vp, cmd = d.vp.Update(k)
 		return cmd, false
-	case "e":
+	case "enter", "e":
 		return d.startEditDesc(), false
-	case "c":
-		return d.startInput(ikComment, ""), false
-	case "A":
-		return d.startInput(ikAttach, ""), false
-	case "o":
-		d.openAttachment()
-	case "s":
-		d.startRun()
-	case "D":
-		d.startWithChildren()
-	case "d":
-		return d.discuss(), false
-	case "S":
-		return d.startInput(ikCron, ""), false
-	case "w":
-		d.toggleWorktree()
-	case "X":
-		d.unschedule()
+	}
+	return nil, false
+}
+
+func (d *detailModel) keyProperties(k tea.KeyPressMsg) (tea.Cmd, bool) {
+	fs := propertyFields()
+	switch k.String() {
+	case "up", "k":
+		d.field = fs[wrap(idxOf(fs, d.field)-1, len(fs))]
+	case "down", "j":
+		d.field = fs[wrap(idxOf(fs, d.field)+1, len(fs))]
+	case "left", "h":
+		d.cycleField(-1)
+	case "right", "l":
+		d.cycleField(+1)
 	case "enter":
 		if d.field == dfPoints {
 			cur := ""
@@ -230,7 +292,7 @@ func (d *detailModel) updateViewing(msg tea.Msg) (tea.Cmd, bool) {
 		if d.field == dfTags {
 			return d.startInput(ikTag, ""), false
 		}
-	case "x":
+	case "x", "backspace":
 		if d.field == dfTags && len(d.issueTags) > 0 {
 			last := d.issueTags[len(d.issueTags)-1]
 			if err := d.store.UntagIssue(d.issue.ID, last.ID); err != nil {
@@ -238,6 +300,80 @@ func (d *detailModel) updateViewing(msg tea.Msg) (tea.Cmd, bool) {
 			}
 			d.reload()
 		}
+	}
+	return nil, false
+}
+
+func (d *detailModel) keyAgent(k tea.KeyPressMsg) (tea.Cmd, bool) {
+	d.syncAgentField() // keep `field` aligned with the cursor before any cycle
+	switch k.String() {
+	case "up", "k":
+		d.agentSel = wrap(d.agentSel-1, agRowCount)
+		d.syncAgentField()
+	case "down", "j":
+		d.agentSel = wrap(d.agentSel+1, agRowCount)
+		d.syncAgentField()
+	case "left", "h":
+		if d.agentSel <= agEffort {
+			d.cycleField(-1)
+		} else if d.agentSel == agWorktree {
+			d.toggleWorktree()
+		}
+	case "right", "l":
+		if d.agentSel <= agEffort {
+			d.cycleField(+1)
+		} else if d.agentSel == agWorktree {
+			d.toggleWorktree()
+		}
+	case "enter":
+		switch d.agentSel {
+		case agWorktree:
+			d.toggleWorktree()
+		case agRun:
+			d.startRun()
+		case agChildren:
+			d.startWithChildren()
+		case agDiscuss:
+			return d.discuss(), false
+		case agSchedule:
+			return d.startInput(ikCron, ""), false
+		}
+	}
+	return nil, false
+}
+
+func (d *detailModel) keyRelations(k tea.KeyPressMsg) (tea.Cmd, bool) {
+	n := len(d.attachments) // index n is the "+ Attach" button
+	switch k.String() {
+	case "up", "k":
+		if d.attachSel > 0 {
+			d.attachSel--
+		}
+	case "down", "j":
+		if d.attachSel < n {
+			d.attachSel++
+		}
+	case "enter", "o":
+		if d.attachSel >= n {
+			return d.startInput(ikAttach, ""), false
+		}
+		d.openAttachment()
+	case "a":
+		return d.startInput(ikAttach, ""), false
+	}
+	return nil, false
+}
+
+func (d *detailModel) keyActivity(k tea.KeyPressMsg) (tea.Cmd, bool) {
+	switch k.String() {
+	case "up", "k":
+		if d.commentScroll > 0 {
+			d.commentScroll--
+		}
+	case "down", "j":
+		d.commentScroll++ // clamped against the window in renderActivity
+	case "enter", "c":
+		return d.startInput(ikComment, ""), false
 	}
 	return nil, false
 }
@@ -326,14 +462,23 @@ func (d *detailModel) toggleWorktree() {
 	d.reload()
 }
 
-// openAttachment opens the most recent attachment (the top of the sidebar list)
-// in the user's default app or browser.
+// selectedAttachment returns the attachment under the Files cursor, if any.
+func (d *detailModel) selectedAttachment() (core.Attachment, bool) {
+	if d.attachSel < 0 || d.attachSel >= len(d.attachments) {
+		return core.Attachment{}, false
+	}
+	return d.attachments[d.attachSel], true
+}
+
+// openAttachment opens the selected attachment in the user's default app or
+// browser.
 func (d *detailModel) openAttachment() {
-	if len(d.attachments) == 0 {
+	a, ok := d.selectedAttachment()
+	if !ok {
 		d.err = "no attachments to open"
 		return
 	}
-	if err := openExternal(d.attachments[0].Path); err != nil {
+	if err := openExternal(a.Path); err != nil {
 		d.err = err.Error()
 		return
 	}
@@ -342,8 +487,8 @@ func (d *detailModel) openAttachment() {
 
 func (d *detailModel) startEditDesc() tea.Cmd {
 	ta := textarea.New()
-	ta.SetWidth(d.descWidth())
-	ta.SetHeight(d.descViewHeight())
+	ta.SetWidth(d.descInteriorWidth())
+	ta.SetHeight(d.descViewportHeight())
 	ta.SetValue(d.issue.Description)
 	d.desc = ta
 	d.mode = dEditDesc

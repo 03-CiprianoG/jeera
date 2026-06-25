@@ -46,9 +46,9 @@ func (m Model) welcome() string {
 	t := m.theme
 	title := t.Title.Render("Welcome to Jeera")
 	body := t.HelpDesc.Render("An agentic-first issue tracker for your terminal.")
-	hint := t.HelpKey.Render("n") + " " + t.HelpDesc.Render("create your first project") +
-		"   " + t.HelpKey.Render("?") + " " + t.HelpDesc.Render("help")
-	return lipgloss.JoinVertical(lipgloss.Center, title, "", body, "", hint)
+	cta := button(t, iconAdd+" Create your first project", true)
+	hint := t.HelpDesc.Render("press enter to begin · ? for help")
+	return lipgloss.JoinVertical(lipgloss.Center, title, "", body, "", cta, "", hint)
 }
 
 func (m Model) renderColumn(col column, idx, colW, height int) string {
@@ -62,15 +62,47 @@ func (m Model) renderColumn(col column, idx, colW, height int) string {
 	rule := lipgloss.NewStyle().Foreground(t.P.Border).Render(strings.Repeat("─", colW))
 
 	lines := []string{header, rule}
-	if len(col.cards) == 0 {
-		lines = append(lines, t.Empty.Width(colW).Render(t.HelpDesc.Render("— empty —")))
-	}
 	for ci, iss := range col.cards {
 		selected := idx == m.colIdx && ci == m.cardIdx
 		lines = append(lines, m.renderCard(iss, selected, colW))
 	}
+	// The "+ New issue" affordance is the slot one past the last card: a ghost
+	// card that doubles as the empty state and the create action for this column.
+	addSel := idx == m.colIdx && m.cardIdx == len(col.cards)
+	lines = append(lines, m.renderAddCard(colW, addSel))
 	col2 := lipgloss.JoinVertical(lipgloss.Left, lines...)
 	return fitHeight(col2, height)
+}
+
+// ghostBorder is a dashed rounded frame — the "empty slot" look for the
+// add-issue affordance, distinct from a real card's solid border.
+var ghostBorder = lipgloss.Border{
+	Top: "╌", Bottom: "╌", Left: "╎", Right: "╎",
+	TopLeft: "╭", TopRight: "╮", BottomLeft: "╰", BottomRight: "╯",
+}
+
+// renderAddCard draws a column's "+ New issue" button. Selected, it glows iris
+// like any focused control; otherwise it sits as a quiet dashed placeholder.
+func (m Model) renderAddCard(colW int, selected bool) string {
+	t := m.theme
+	bc, fc := t.P.Border, t.P.TextSubtle
+	if selected {
+		bc, fc = t.P.FocusGlow, t.P.FocusGlow
+	}
+	return lipgloss.NewStyle().
+		Border(ghostBorder).BorderForeground(bc).
+		Foreground(fc).Bold(selected).
+		Width(colW).Align(lipgloss.Center).Padding(0, 1).
+		Render(iconAdd + " New issue")
+}
+
+// onAddCard reports whether the board cursor is on a column's "+ New issue" slot
+// rather than a real card.
+func (m Model) onAddCard() bool {
+	if m.colIdx < 0 || m.colIdx >= len(m.board.columns) {
+		return false
+	}
+	return m.cardIdx == len(m.board.columns[m.colIdx].cards)
 }
 
 func (m Model) renderCard(iss core.Issue, selected bool, colW int) string {
@@ -113,29 +145,57 @@ func (m Model) renderCard(iss core.Issue, selected bool, colW int) string {
 	return style.Width(colW).Render(body)
 }
 
-// updateBoard handles keys while the board is focused.
-func (m Model) updateBoard(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+// handleGlobalKey handles the keys that work the same on every view: switching
+// destinations and opening the overlays. It returns handled=false for anything
+// the active view should interpret itself (its own navigation and actions).
+func (m Model) handleGlobalKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd, bool) {
 	switch {
 	case key.Matches(msg, m.keys.Quit):
-		return m, tea.Quit
+		return m, tea.Quit, true
+	case key.Matches(msg, m.keys.NextView):
+		m.switchView(+1)
+		return m, nil, true
+	case key.Matches(msg, m.keys.PrevView):
+		m.switchView(-1)
+		return m, nil, true
 	case key.Matches(msg, m.keys.Help):
 		m.mode = modeHelp
+		return m, nil, true
 	case key.Matches(msg, m.keys.MCP):
 		m.mode = modeMCP
-	case key.Matches(msg, m.keys.Runs):
-		m.recentRuns, _ = m.store.ListRecentRuns(50)
-		m.runsCursor = 0
-		m.mode = modeRuns
+		return m, nil, true
 	case key.Matches(msg, m.keys.Settings):
 		m.settings = newSettings(m.cfg, m.theme, m.width, m.height)
 		m.mode = modeSettings
+		return m, nil, true
 	case key.Matches(msg, m.keys.Project):
 		m.mode = modeProjects
 		m.projSel = m.activeProjectIndex()
+		return m, nil, true
 	case key.Matches(msg, m.keys.Refresh):
 		m.reload()
-		return m, toast("refreshed")
+		return m, toast("refreshed"), true
+	}
+	return m, nil, false
+}
 
+// updateBoard handles the board's deliberately small keyset: arrows to move the
+// cursor, ⇧+arrows to move the selected ticket across columns, e/x/enter to
+// rename/delete/open. Creating is a button (the column's "+ New issue" slot),
+// not a keystroke. The global keys are intercepted earlier by handleGlobalKey.
+func (m Model) updateBoard(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
+	// Welcome screen (no project yet): the only move is creating the first
+	// project, offered as the focused button — enter (or n) starts it.
+	if m.active.ID == 0 {
+		if key.Matches(msg, m.keys.Enter) || key.Matches(msg, m.keys.New) {
+			m.form = newCreateProjectForm()
+			m.mode = modeForm
+			return m, m.form.focusCmd()
+		}
+		return m, nil
+	}
+
+	switch {
 	case key.Matches(msg, m.keys.Up):
 		m.cardIdx--
 		m.clampSelection()
@@ -148,15 +208,11 @@ func (m Model) updateBoard(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.Right):
 		m.colIdx++
 		m.clampSelection()
+	case key.Matches(msg, m.keys.MoveRight):
+		return m.moveSelected(+1)
+	case key.Matches(msg, m.keys.MoveLeft):
+		return m.moveSelected(-1)
 
-	case key.Matches(msg, m.keys.New):
-		if m.active.ID == 0 {
-			m.form = newCreateProjectForm()
-		} else {
-			m.form = newCreateIssueForm()
-		}
-		m.mode = modeForm
-		return m, m.form.focusCmd()
 	case key.Matches(msg, m.keys.Edit):
 		if iss, ok := m.selectedIssue(); ok {
 			m.form = newRenameForm(iss)
@@ -181,11 +237,13 @@ func (m Model) updateBoard(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			}
 			m.mode = modeConfirm
 		}
-	case key.Matches(msg, m.keys.MoveRight):
-		return m.moveSelected(+1)
-	case key.Matches(msg, m.keys.MoveLeft):
-		return m.moveSelected(-1)
 	case key.Matches(msg, m.keys.Enter):
+		if m.onAddCard() {
+			// Create directly into this column's status.
+			m.form = newCreateIssueForm(m.board.columns[m.colIdx].status.ID)
+			m.mode = modeForm
+			return m, m.form.focusCmd()
+		}
 		if iss, ok := m.selectedIssue(); ok {
 			m.detail = newDetail(m.store, m.runMgr, m.sched, m.theme, iss.ID, m.width, m.height)
 			m.mode = modeDetail

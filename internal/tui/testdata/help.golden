@@ -1,30 +1,30 @@
-  Jeera  Jeera JEE                                                                        ● mcp off 
+                ╭────────────╮   ╭──────────────╮   ╭──────────────╮   ╭───────────╮                
+                │  ▦  Board  │   │  ≡  Backlog  │   │  ◴  Sprints  │   │  ▶  Runs  │                
+                ╰────────────╯   ╰──────────────╯   ╰──────────────╯   ╰───────────╯                
+────────────────────────────────────────────────────────────────────────────────────────────────────
                                                                                                     
                                                                                                     
                                                                                                     
                                                                                                     
                                                                                                     
-                                                                                                    
-                                                                                                    
-     ╭───────────────────────────────────────────────────────────────────────────────────────╮      
-     │                                                                                       │      
-     │  Keys                                                                                 │      
-     │                                                                                       │      
-     │  ↑/k      up            n        new      H        move left    m        mcp          │      
-     │  ↓/j      down          e        rename   L        move right   R        runs         │      
-     │  ←/h      prev column   x        delete   p        projects     ,        settings     │      
-     │  →/l      next column   enter    open                           r        refresh      │      
-     │                                                                 ?        help         │      
-     │                                                                 q        quit         │      
-     │                                                                                       │      
-     │  press any key to close                                                               │      
-     │                                                                                       │      
-     ╰───────────────────────────────────────────────────────────────────────────────────────╯      
-                                                                                                    
-                                                                                                    
+  ╭──────────────────────────────────────────────────────────────────────────────────────────────╮  
+  │                                                                                              │  
+  │  Keys                                                                                        │  
+  │  ⌥tab switches views · tab moves focus inside a view · ⇧+arrows move a ticket                │  
+  │                                                                                              │  
+  │  ⌥tab     next view     enter    open          n        new            p        projects     │  
+  │  ⌥⇧tab    prev view     e        rename        a        assign         m        mcp          │  
+  │  ↑        up            x        delete        s        start/finish   ,        settings     │  
+  │  ↓        down          ⇧←       move ticket   t        resume         r        refresh      │  
+  │  ←        prev column   ⇧→       move ticket   w        watch          ?        help         │  
+  │  →        next column                                                  q        quit         │  
+  │                                                                                              │  
+  │  press any key to close                                                                      │  
+  │                                                                                              │  
+  ╰──────────────────────────────────────────────────────────────────────────────────────────────╯  
                                                                                                     
                                                                                                     
                                                                                                     
                                                                                                     
                                                                                                     
- ←/h prev column  →/l next column  ↑/k up  ↓/j down  n new  e rename  x delete  ? help  q quit
+  Jeera  Jeera JEE                                                               ● mcp off   ? help

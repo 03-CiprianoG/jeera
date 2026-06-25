@@ -320,13 +320,13 @@ func TestRunsWindowKeepsCursorVisible(t *testing.T) {
 		{49, 50, 5, 45, 50}, // bottom of a long list
 	}
 	for _, c := range cases {
-		start, end := runsWindow(c.cursor, c.n, c.visible)
+		start, end := scrollWindow(c.cursor, c.n, c.visible)
 		if start != c.wantStart || end != c.wantEnd {
-			t.Errorf("runsWindow(%d,%d,%d) = (%d,%d), want (%d,%d)",
+			t.Errorf("scrollWindow(%d,%d,%d) = (%d,%d), want (%d,%d)",
 				c.cursor, c.n, c.visible, start, end, c.wantStart, c.wantEnd)
 		}
 		if start < 0 || end > c.n || c.cursor < start || c.cursor >= end {
-			t.Errorf("runsWindow(%d,%d,%d) = (%d,%d) does not contain the cursor in range",
+			t.Errorf("scrollWindow(%d,%d,%d) = (%d,%d) does not contain the cursor in range",
 				c.cursor, c.n, c.visible, start, end)
 		}
 	}

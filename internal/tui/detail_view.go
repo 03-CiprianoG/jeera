@@ -11,156 +11,416 @@ import (
 	"github.com/03-CiprianoG/jeera/internal/tui/theme"
 )
 
+// dlayout holds the computed cell rectangles of the ticket bento, derived from
+// the terminal size. Every panel is sized from here so the grid tiles the body
+// exactly, with no gaps or overruns.
+type dlayout struct {
+	bodyH            int
+	leftW, rightW    int
+	single           bool // narrow terminals stack every panel in one column
+	descH, actH      int
+	propH, agH, relH int
+}
+
+func (d *detailModel) layout() dlayout {
+	w, h := d.width, d.height
+	bodyH := h - 2 // title bar + footer
+	if bodyH < 8 {
+		bodyH = 8
+	}
+
+	// Below ~80 columns the two-column bento can't breathe, so stack the panels in
+	// one full-width column; the view clips to height, keeping the top panels.
+	if w < 80 {
+		descH := bodyH * 34 / 100
+		if descH < 6 {
+			descH = 6
+		}
+		propH, agH, relH := 9, 9, 6
+		actH := bodyH - descH - propH - agH - relH
+		if actH < 3 {
+			actH = 3
+		}
+		return dlayout{bodyH: bodyH, leftW: w, single: true, descH: descH, actH: actH, propH: propH, agH: agH, relH: relH}
+	}
+
+	leftW := w * 62 / 100
+	rightW := w - leftW - 1 // a 1-cell gutter between the columns
+	if rightW < 24 {
+		rightW = 24
+		leftW = w - rightW - 1
+	}
+	if leftW < 24 {
+		leftW = 24
+	}
+
+	// Left column: a tall Description over the Activity timeline.
+	descH := bodyH * 60 / 100
+	actH := bodyH - descH
+	if actH < 5 {
+		actH = 5
+		descH = bodyH - actH
+	}
+	if descH < 6 {
+		descH = 6
+	}
+
+	// Right column: Properties is fixed at the height of its seven rows; Agent and
+	// Relations split the rest, with Agent guaranteed room for both button rows.
+	propH := 9
+	if propH > bodyH-12 {
+		propH = bodyH - 12
+	}
+	if propH < 5 {
+		propH = 5
+	}
+	remaining := bodyH - propH
+	agH := remaining * 48 / 100
+	if agH < 9 {
+		agH = 9
+	}
+	relH := remaining - agH
+	if relH < 6 {
+		relH = 6
+		agH = remaining - relH
+		if agH < 7 {
+			agH = 7
+			relH = remaining - agH
+		}
+	}
+	return dlayout{bodyH: bodyH, leftW: leftW, rightW: rightW, descH: descH, actH: actH, propH: propH, agH: agH, relH: relH}
+}
+
+// rightInner is the interior text width of a right-column panel — or the single
+// column's width when the layout has collapsed to one column.
+func (L dlayout) rightInner() int {
+	if L.single {
+		return L.leftW - 4
+	}
+	return L.rightW - 4
+}
+
+func (d *detailModel) descInteriorWidth() int {
+	w := d.layout().leftW - 4
+	if w < 10 {
+		w = 10
+	}
+	return w
+}
+
+// descViewportHeight reserves the description panel's interior for a two-line
+// title, a blank, and the trailing Edit button — the rest scrolls the body.
+func (d *detailModel) descViewportHeight() int {
+	h := d.layout().descH - 6
+	if h < 1 {
+		h = 1
+	}
+	return h
+}
+
 func (d *detailModel) View() string {
-	t := d.theme
-	head := d.renderHead()
-	rule := lipgloss.NewStyle().Foreground(t.P.Border).Render(strings.Repeat("─", d.width))
-	body := lipgloss.JoinHorizontal(lipgloss.Top, d.renderLeft(), " ", d.renderSidebar())
-	comments := d.renderComments()
+	title := d.renderTitleBar()
+	body := d.renderBento()
 	footer := d.renderFooter()
-	content := lipgloss.JoinVertical(lipgloss.Left, head, rule, body, comments, footer)
+	content := lipgloss.JoinVertical(lipgloss.Left, title, body, footer)
 	return fitHeight(content, d.height)
 }
 
-func (d *detailModel) renderHead() string {
+// renderTitleBar is the always-on identity row: key, type and live status on the
+// left; how to leave on the right.
+func (d *detailModel) renderTitleBar() string {
 	t := d.theme
 	name, cat := d.statusInfo()
 	dot := lipgloss.NewStyle().Foreground(t.CategoryColor(cat)).Render("●")
 	left := t.CardKey.Render(d.issue.Key) + "  " +
 		t.CardMeta.Render(string(d.issue.Type)) + "  " +
 		dot + " " + lipgloss.NewStyle().Foreground(t.CategoryColor(cat)).Render(name)
-	right := t.HelpDesc.Render("esc back")
+	right := t.HelpDesc.Render("tab panels · esc back")
 	inner := spread(left, right, d.width-2)
 	return lipgloss.NewStyle().Background(t.P.BgSurface).Width(d.width).Render(" " + inner + " ")
 }
 
-func (d *detailModel) renderLeft() string {
-	t := d.theme
-	title := t.Title.Width(d.descWidth()).Render(truncate(d.issue.Title, d.descWidth()*2))
-	var pane string
-	if d.mode == dEditDesc {
-		pane = d.desc.View()
-	} else {
-		pane = d.vp.View()
+// renderBento tiles the five panels: a two-column grid normally, or a single
+// stacked column on a narrow terminal.
+func (d *detailModel) renderBento() string {
+	L := d.layout()
+	if L.single {
+		return lipgloss.JoinVertical(lipgloss.Left,
+			panel(d.theme, panelOpts{title: "Description", body: d.descBody(L), width: L.leftW, height: L.descH, focused: d.focus == panelDescription}),
+			panel(d.theme, panelOpts{title: "Properties", body: d.propertiesBody(L), width: L.leftW, height: L.propH, focused: d.focus == panelProperties}),
+			panel(d.theme, panelOpts{title: "Agent", body: d.agentBody(L), width: L.leftW, height: L.agH, focused: d.focus == panelAgent}),
+			panel(d.theme, panelOpts{title: "Relations & Files", body: d.relationsBody(L), width: L.leftW, height: L.relH, focused: d.focus == panelRelations}),
+			panel(d.theme, panelOpts{title: "Activity", body: d.activityBody(L), width: L.leftW, height: L.actH, focused: d.focus == panelActivity}),
+		)
 	}
-	left := lipgloss.JoinVertical(lipgloss.Left, title, "", pane)
-	return lipgloss.NewStyle().Width(d.descWidth()).Render(left)
+	left := lipgloss.JoinVertical(lipgloss.Left,
+		panel(d.theme, panelOpts{title: "Description", body: d.descBody(L), width: L.leftW, height: L.descH, focused: d.focus == panelDescription}),
+		panel(d.theme, panelOpts{title: "Activity", body: d.activityBody(L), width: L.leftW, height: L.actH, focused: d.focus == panelActivity}),
+	)
+	right := lipgloss.JoinVertical(lipgloss.Left,
+		panel(d.theme, panelOpts{title: "Properties", body: d.propertiesBody(L), width: L.rightW, height: L.propH, focused: d.focus == panelProperties}),
+		panel(d.theme, panelOpts{title: "Agent", body: d.agentBody(L), width: L.rightW, height: L.agH, focused: d.focus == panelAgent}),
+		panel(d.theme, panelOpts{title: "Relations & Files", body: d.relationsBody(L), width: L.rightW, height: L.relH, focused: d.focus == panelRelations}),
+	)
+	gutter := strings.TrimRight(strings.Repeat(" \n", L.bodyH), "\n")
+	return lipgloss.JoinHorizontal(lipgloss.Top, left, gutter, right)
 }
 
-func (d *detailModel) renderSidebar() string {
+// --- Description -------------------------------------------------------------
+
+func (d *detailModel) descBody(L dlayout) string {
 	t := d.theme
-	w := d.width - d.descWidth() - 3
-	if w < 16 {
-		w = 16
+	iw := L.leftW - 4
+	titleArea := twoLineTitle(t.Title.Width(iw).Render(d.issue.Title))
+
+	if d.mode == dEditDesc {
+		return titleArea + "\n\n" + d.desc.View()
 	}
-	lines := make([]string, 0, int(dfFieldCount)+4)
-	for f := detailField(0); f < dfFieldCount; f++ {
-		label, value, c := d.fieldDisplay(f)
-		labelStyle := t.Label
-		valStyle := lipgloss.NewStyle().Foreground(c)
-		marker := "  "
-		if f == d.field && d.mode == dViewing {
-			marker = t.HelpKey.Render("▸ ")
-			labelStyle = labelStyle.Bold(true)
-		}
-		row := marker + labelStyle.Render(label) + " " + valStyle.Render(truncate(value, w-len(label)-4))
-		lines = append(lines, row)
+	editBtn := lipgloss.NewStyle().Width(iw).Align(lipgloss.Right).
+		Render(button(t, iconEdit+" Edit", d.focus == panelDescription))
+	return titleArea + "\n\n" + d.vp.View() + "\n" + editBtn
+}
+
+// twoLineTitle clamps a (possibly wrapped) title block to exactly two rows, so
+// the description's scroll region below it never shifts.
+func twoLineTitle(s string) string {
+	lines := strings.Split(s, "\n")
+	if len(lines) > 2 {
+		lines = lines[:2]
 	}
-	// Links section.
-	if len(d.links) > 0 {
-		lines = append(lines, "", t.Label.Render("Links"))
-		for _, l := range d.links {
-			lines = append(lines, "  "+t.CardMeta.Render(string(l.Type))+" "+t.CardKey.Render(l.Issue.Key))
-		}
+	for len(lines) < 2 {
+		lines = append(lines, "")
+	}
+	return strings.Join(lines, "\n")
+}
+
+// --- Activity ----------------------------------------------------------------
+
+func (d *detailModel) activityBody(L dlayout) string {
+	t := d.theme
+	innerW := L.leftW - 4
+	listH := L.actH - 2 - 1 // reserve the trailing Comment button
+	if listH < 1 {
+		listH = 1
 	}
 
-	// Worktree + runs.
-	wt := "on"
-	if d.issue.WorktreeOn != nil && !*d.issue.WorktreeOn {
-		wt = "off"
+	var rows []string
+	for _, c := range d.comments {
+		who := t.Chip.Render(fmt.Sprintf("%-8s", truncate(c.Author, 8)))
+		rows = append(rows, who+"  "+t.StatusText.Render(truncate(oneLine(c.Body), innerW-12)))
 	}
-	lines = append(lines, "", t.Label.Render("Worktree")+" "+t.StatusText.Render(wt))
+
+	var window []string
+	if len(rows) == 0 {
+		window = []string{t.HelpDesc.Render("No activity yet — start the conversation.")}
+	} else {
+		maxStart := len(rows) - listH
+		if maxStart < 0 {
+			maxStart = 0
+		}
+		if d.commentScroll > maxStart {
+			d.commentScroll = maxStart
+		}
+		start := maxStart - d.commentScroll
+		if start < 0 {
+			start = 0
+		}
+		end := start + listH
+		if end > len(rows) {
+			end = len(rows)
+		}
+		window = rows[start:end]
+	}
+
+	body := strings.Join(window, "\n")
+	btn := lipgloss.NewStyle().Width(innerW).Align(lipgloss.Right).
+		Render(button(t, iconAdd+" Comment", d.focus == panelActivity))
+	// Pad the list region so the button sits on the last interior row.
+	for lipgloss.Height(body) < listH {
+		body += "\n"
+	}
+	return body + "\n" + btn
+}
+
+// --- Properties --------------------------------------------------------------
+
+func (d *detailModel) propertiesBody(L dlayout) string {
+	w := L.rightInner()
+	focused := d.focus == panelProperties
+	lines := make([]string, 0, len(propertyFields()))
+	for _, f := range propertyFields() {
+		lines = append(lines, d.fieldRow(f, w, focused && d.field == f))
+	}
+	return strings.Join(lines, "\n")
+}
+
+// cyclable reports whether a field changes with ←/→ (vs being edited via Enter).
+func cyclable(f detailField) bool {
+	switch f {
+	case dfPoints, dfTags:
+		return false
+	}
+	return true
+}
+
+// fieldRow renders one metadata row: a label and its value, with the active row
+// wearing the iris label and either cycler chevrons (cyclable fields) or an Enter
+// glyph (the edited ones). The value column is the same whether active or not.
+func (d *detailModel) fieldRow(f detailField, w int, active bool) string {
+	t := d.theme
+	label, value, c := d.fieldDisplay(f)
+	value = truncate(value, w-13)
+	labelStyle := t.Label
+	if active {
+		labelStyle = lipgloss.NewStyle().Foreground(t.P.FocusGlow).Bold(true)
+	}
+	vs := lipgloss.NewStyle().Foreground(c)
+
+	var control string
+	switch {
+	case active && cyclable(f):
+		control = cycler(t, value, vs, true)
+	case active:
+		control = "  " + vs.Render(value) + "  " + lipgloss.NewStyle().Foreground(t.P.FocusGlow).Render("↵")
+	default:
+		control = "  " + vs.Render(value)
+	}
+	return labelStyle.Render(fmt.Sprintf("%-9s", label)) + control
+}
+
+// --- Agent -------------------------------------------------------------------
+
+func (d *detailModel) agentBody(L dlayout) string {
+	t := d.theme
+	w := L.rightInner()
+	focused := d.focus == panelAgent
+
+	lines := []string{
+		d.fieldRow(dfProvider, w, focused && d.agentSel == agProvider),
+		d.fieldRow(dfModel, w, focused && d.agentSel == agModel),
+		d.fieldRow(dfEffort, w, focused && d.agentSel == agEffort),
+		d.toggleRow("Worktree", worktreeLabel(d.issue), w, focused && d.agentSel == agWorktree),
+		"",
+	}
+
+	btn := -1
+	if focused && d.agentSel >= agRun {
+		btn = d.agentSel - agRun
+	}
+	row1Focus, row2Focus := -1, -1
+	switch btn {
+	case 0:
+		row1Focus = 0
+	case 1:
+		row1Focus = 1
+	case 2:
+		row2Focus = 0
+	case 3:
+		row2Focus = 1
+	}
+	lines = append(lines,
+		buttonRow(t, []string{iconRun + " Run", iconChildren + " Children"}, row1Focus),
+		buttonRow(t, []string{iconDiscuss + " Discuss", iconClock + " Schedule"}, row2Focus),
+	)
+
 	if len(d.runs) > 0 {
-		lines = append(lines, t.Label.Render("Runs"))
-		for i, r := range d.runs {
-			if i >= 3 {
-				break
+		lines = append(lines, "", sectionTitle(t, "Runs"))
+		for _, r := range d.runs[:min(2, len(d.runs))] {
+			when := ""
+			if r.StartedAt != nil {
+				when = "  " + t.CardMeta.Render(r.StartedAt.Local().Format("Jan 2 15:04"))
 			}
 			rs := lipgloss.NewStyle().Foreground(t.RunStateColor(r.Status))
-			lines = append(lines, "  "+t.CardMeta.Render(fmt.Sprintf("v%d", r.Version))+" "+rs.Render(string(r.Status)))
+			lines = append(lines, fmt.Sprintf("v%-3d ", r.Version)+rs.Render(string(r.Status))+when)
 		}
 	}
 	if len(d.schedules) > 0 {
-		lines = append(lines, t.Label.Render("Schedules"))
-		for i, sc := range d.schedules {
-			if i >= 3 {
-				break
-			}
-			when := ""
+		lines = append(lines, sectionTitle(t, "Schedule"))
+		for _, sc := range d.schedules {
+			next := ""
 			if sc.NextRun != nil {
-				when = " → " + sc.NextRun.Local().Format("Jan 2 15:04")
+				next = " → " + sc.NextRun.Local().Format("Jan 2 15:04")
 			}
-			spec := sc.CronSpec
-			if !sc.Enabled {
-				spec += " (off)"
-			}
-			lines = append(lines, "  "+t.Chip.Render("⏱ "+spec)+t.HelpDesc.Render(when))
+			lines = append(lines, t.Chip.Render(iconClock+" "+sc.CronSpec)+t.HelpDesc.Render(next))
 		}
 	}
-	if len(d.attachments) > 0 {
-		lines = append(lines, t.Label.Render("Attachments"))
-		for i, a := range d.attachments {
-			if i >= 4 {
-				lines = append(lines, "  "+t.HelpDesc.Render(fmt.Sprintf("+%d more", len(d.attachments)-4)))
-				break
-			}
-			icon := "📎"
-			if a.IsURL() {
-				icon = "🔗"
-			}
-			lines = append(lines, "  "+t.CardMeta.Render(icon+" ")+t.StatusText.Render(truncate(a.Filename, w-6)))
-		}
-	}
-
-	body := lipgloss.JoinVertical(lipgloss.Left, lines...)
-	return lipgloss.NewStyle().Width(w).Render(fitHeight(body, d.bodyHeight()))
+	return strings.Join(lines, "\n")
 }
 
-func (d *detailModel) renderComments() string {
+func worktreeLabel(iss core.Issue) string {
+	if iss.WorktreeOn != nil && !*iss.WorktreeOn {
+		return "off"
+	}
+	return "on"
+}
+
+// toggleRow renders a boolean row like a field row, cycling its label with ←/→.
+func (d *detailModel) toggleRow(label, val string, w int, active bool) string {
 	t := d.theme
-	lines := []string{t.Label.Render("Activity")}
-	start := 0
-	if len(d.comments) > 4 {
-		start = len(d.comments) - 4
+	labelStyle := t.Label
+	if active {
+		labelStyle = lipgloss.NewStyle().Foreground(t.P.FocusGlow).Bold(true)
 	}
-	for _, c := range d.comments[start:] {
-		who := t.Chip.Render(c.Author)
-		lines = append(lines, "  "+who+" "+t.CardMeta.Render(truncate(c.Body, d.width-len(c.Author)-6)))
+	vs := lipgloss.NewStyle().Foreground(t.P.TextPrimary)
+	control := "  " + vs.Render(val)
+	if active {
+		control = cycler(t, val, vs, true)
 	}
-	return fitHeight(lipgloss.JoinVertical(lipgloss.Left, lines...), d.commentsHeight())
+	return labelStyle.Render(fmt.Sprintf("%-9s", label)) + control
 }
+
+// --- Relations & Files -------------------------------------------------------
+
+func (d *detailModel) relationsBody(L dlayout) string {
+	t := d.theme
+	w := L.rightInner()
+	focused := d.focus == panelRelations
+
+	row := func(label, value string) string {
+		return t.Label.Render(fmt.Sprintf("%-8s", label)) + " " + t.StatusText.Render(truncate(value, w-9))
+	}
+	parent := "—"
+	if d.parent != nil {
+		parent = d.parent.Key + " " + d.parent.Title
+	}
+	lines := []string{row("Epic", d.epicKey("—")), row("Parent", parent)}
+	if len(d.children) > 0 {
+		lines = append(lines, sectionTitle(t, fmt.Sprintf("Children · %d", len(d.children))))
+		for _, c := range d.children[:min(2, len(d.children))] {
+			lines = append(lines, t.CardKey.Render(c.Key)+" "+t.StatusText.Render(truncate(c.Title, w-len(c.Key)-1)))
+		}
+	}
+	if len(d.links) > 0 {
+		lines = append(lines, sectionTitle(t, "Links"))
+		for _, l := range d.links[:min(2, len(d.links))] {
+			lines = append(lines, t.CardMeta.Render(string(l.Type))+" "+t.CardKey.Render(l.Issue.Key))
+		}
+	}
+
+	lines = append(lines, sectionTitle(t, fmt.Sprintf("Files · %d", len(d.attachments))))
+	for i, a := range d.attachments {
+		icon := iconClip
+		if a.IsURL() {
+			icon = iconLink
+		}
+		name := truncate(a.Filename, w-4)
+		st := t.StatusText
+		if focused && d.attachSel == i {
+			st = lipgloss.NewStyle().Foreground(t.P.FocusGlow).Bold(true)
+		}
+		lines = append(lines, st.Render(icon+" "+name))
+	}
+	lines = append(lines, "", lipgloss.NewStyle().Width(w).Align(lipgloss.Right).
+		Render(button(t, iconClip+" Attach", focused && d.attachSel == len(d.attachments))))
+	return strings.Join(lines, "\n")
+}
+
+// --- footer ------------------------------------------------------------------
 
 func (d *detailModel) renderFooter() string {
 	t := d.theme
-	var hint string
-	switch d.mode {
-	case dEditDesc:
-		hint = t.HelpKey.Render("ctrl+s") + " " + t.HelpDesc.Render("save") + "   " +
-			t.HelpKey.Render("esc") + " " + t.HelpDesc.Render("cancel")
-	case dInput:
-		hint = t.Label.Render(d.inputLabel()) + " " + d.input.View() + "   " +
-			t.HelpKey.Render("enter") + " " + t.HelpDesc.Render("save")
-	default:
-		segs := []struct{ k, v string }{
-			{"j/k", "field"}, {"h/l", "change"}, {"e", "describe"}, {"c", "comment"},
-			{"s", "start"}, {"D", "+children"}, {"d", "discuss"}, {"A", "attach"}, {"o", "open"}, {"S", "schedule"}, {"w", "worktree"}, {"esc", "back"},
-		}
-		parts := make([]string, 0, len(segs))
-		for _, s := range segs {
-			parts = append(parts, t.HelpKey.Render(s.k)+" "+t.HelpDesc.Render(s.v))
-		}
-		hint = strings.Join(parts, t.HelpDesc.Render("  "))
-	}
+	seg := func(k, v string) string { return t.HelpKey.Render(k) + " " + t.HelpDesc.Render(v) }
+
 	right := ""
 	switch {
 	case d.err != "":
@@ -168,8 +428,69 @@ func (d *detailModel) renderFooter() string {
 	case d.notice != "":
 		right = t.Toast.Render(truncate(d.notice, d.width/3))
 	}
-	inner := spread(truncate(hint, d.width-2-lipgloss.Width(right)-1), right, d.width-2)
+	budget := d.width - 3 - lipgloss.Width(right)
+	if budget < 0 {
+		budget = 0
+	}
+
+	var hint string
+	switch d.mode {
+	case dInput:
+		hint = t.Label.Render(d.inputLabel()) + " " + d.input.View() + "   " + seg("enter", "save") + "  " + seg("esc", "cancel")
+	case dEditDesc:
+		hint = fitSegments([]string{seg("ctrl+s", "save"), seg("esc", "cancel")}, budget, t)
+	default:
+		hint = fitSegments(d.panelHints(seg), budget, t)
+	}
+
+	inner := spread(hint, right, d.width-2)
 	return lipgloss.NewStyle().Background(t.P.BgSurface).Width(d.width).Render(" " + inner + " ")
+}
+
+// panelHints lists the footer segments for the focused panel — only the gestures
+// that panel responds to, so the footer never advertises an inert action.
+func (d *detailModel) panelHints(seg func(k, v string) string) []string {
+	parts := []string{seg("tab", "panel")}
+	switch d.focus {
+	case panelDescription:
+		parts = append(parts, seg("↑↓", "scroll"), seg("enter", "edit"))
+	case panelProperties:
+		parts = append(parts, seg("↑↓", "field"), seg("←→", "change"))
+		if d.field == dfPoints || d.field == dfTags {
+			parts = append(parts, seg("enter", "edit"))
+		}
+	case panelAgent:
+		parts = append(parts, seg("↑↓", "row"), seg("←→", "change"), seg("enter", "act"))
+	case panelRelations:
+		parts = append(parts, seg("↑↓", "select"), seg("enter", "open/attach"))
+	case panelActivity:
+		parts = append(parts, seg("↑↓", "scroll"), seg("enter", "comment"))
+	}
+	return append(parts, seg("esc", "back"))
+}
+
+// fitSegments joins as many whole hint segments as fit within budget display
+// cells. Dropping whole (already-styled) segments rather than cutting the string
+// keeps the footer one clean row at any width and never slices an ANSI escape.
+func fitSegments(segs []string, budget int, t theme.Theme) string {
+	sep := t.HelpDesc.Render("  ")
+	var b strings.Builder
+	w := 0
+	for _, s := range segs {
+		add := lipgloss.Width(s)
+		if b.Len() > 0 {
+			add += lipgloss.Width(sep)
+		}
+		if b.Len() > 0 && w+add > budget {
+			break
+		}
+		if b.Len() > 0 {
+			b.WriteString(sep)
+		}
+		b.WriteString(s)
+		w += add
+	}
+	return b.String()
 }
 
 func (d *detailModel) inputLabel() string {
@@ -186,6 +507,8 @@ func (d *detailModel) inputLabel() string {
 		return "Comment:"
 	}
 }
+
+// --- field display -----------------------------------------------------------
 
 // statusInfo returns the issue's status name and category.
 func (d *detailModel) statusInfo() (string, core.StatusCategory) {
@@ -266,4 +589,9 @@ func orNone(s, none string) string {
 		return none
 	}
 	return s
+}
+
+// oneLine flattens newlines so a multi-line comment body fits one activity row.
+func oneLine(s string) string {
+	return strings.Join(strings.Fields(s), " ")
 }

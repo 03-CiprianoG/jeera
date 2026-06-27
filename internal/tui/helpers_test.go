@@ -111,6 +111,10 @@ func keyPress(s string) tea.KeyPressMsg {
 
 var ansiRE = regexp.MustCompile(`\x1b\[[0-9;]*[a-zA-Z]`)
 
+// osc8RE matches OSC 8 hyperlink open/close sequences so goldens assert on the
+// visible text and layout, not the (clickable) link escapes around it.
+var osc8RE = regexp.MustCompile("\x1b\\]8;[^\x07\x1b]*(?:\x07|\x1b\\\\)")
+
 // render returns the model's current view content with ANSI styling stripped,
 // so golden comparisons assert on layout and text rather than environment-
 // dependent color codes.
@@ -118,7 +122,7 @@ func render(m Model) string {
 	return strings.TrimRight(stripANSI(m.View().Content), "\n ")
 }
 
-func stripANSI(s string) string { return ansiRE.ReplaceAllString(s, "") }
+func stripANSI(s string) string { return osc8RE.ReplaceAllString(ansiRE.ReplaceAllString(s, ""), "") }
 
 // captureOutput runs fn with os.Stdout redirected to a pipe and returns whatever
 // fn wrote — used to assert on the raw OSC sequences the title commands emit.

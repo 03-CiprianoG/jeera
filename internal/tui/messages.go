@@ -22,6 +22,12 @@ type toastMsg struct{ text string }
 // clearToastMsg clears the current toast.
 type clearToastMsg struct{}
 
+// openIssueDetailMsg asks the root model to open the ticket detail for an issue.
+// The Sprint detail emits it when an issue is chosen from its Issues panel: the
+// root owns the run manager and scheduler the ticket detail needs, and keeps the
+// Sprint view underneath so leaving the issue returns there, not to the list.
+type openIssueDetailMsg struct{ issueID int64 }
+
 // toast returns a command that shows text now and clears it after a short delay.
 func toast(text string) tea.Cmd {
 	return tea.Batch(

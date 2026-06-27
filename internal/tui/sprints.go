@@ -166,9 +166,14 @@ func (m Model) updateSprints(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			return m, m.form.focusCmd()
 		}
 	case key.Matches(msg, m.keys.Enter):
-		if it, ok := m.selectedSprintItem(); ok && it.kind == itemIssue {
-			m.detail = newDetail(m.store, m.runMgr, m.sched, m.theme, it.issue.ID, m.width, m.height)
-			m.mode = modeDetail
+		if it, ok := m.selectedSprintItem(); ok {
+			if it.kind == itemIssue {
+				m.detail = newDetail(m.store, m.runMgr, m.sched, m.theme, it.issue.ID, m.width, m.height)
+				m.mode = modeDetail
+			} else { // a sprint header opens the full-screen Sprint detail
+				m.sprintDetail = newSprintDetail(m.store, m.theme, it.sprint.ID, m.width, m.height)
+				m.mode = modeSprintDetail
+			}
 		}
 	case key.Matches(msg, m.keys.Cycle): // s: advance the selected sprint's state
 		if it, ok := m.selectedSprintItem(); ok && it.kind == itemHeader {

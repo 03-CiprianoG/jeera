@@ -32,6 +32,7 @@ const (
 	modeProjects
 	modeConfirm
 	modeDetail
+	modeSprintDetail
 	modePicker
 	modeSettings
 	modeSearch // the find overlay over the Board or Backlog
@@ -78,15 +79,16 @@ type Model struct {
 	backlogSel      int // selected issue in the Backlog view
 	sprintSel       int // selected row (sprint header or issue) in the Sprints view
 
-	view      view
-	mode      mode
-	form      *formModel
-	detail    *detailModel
-	picker    *pickerModel // non-nil while a chooser overlay is open
-	search    *searchModel // non-nil while the find overlay is open
-	confirm   string
-	onConfirm func() tea.Cmd
-	projSel   int
+	view         view
+	mode         mode
+	form         *formModel
+	detail       *detailModel
+	sprintDetail *sprintDetailModel // non-nil while the full-screen Sprint view is open
+	picker       *pickerModel       // non-nil while a chooser overlay is open
+	search       *searchModel       // non-nil while the find overlay is open
+	confirm      string
+	onConfirm    func() tea.Cmd
+	projSel      int
 
 	// Live search filters, one per searchable view, persisted across the store-
 	// event reloads so an agent's change never silently drops the filter. The
@@ -375,12 +377,24 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.detail != nil {
 			m.detail.setSize(m.width, m.height)
 		}
+		if m.sprintDetail != nil {
+			m.sprintDetail.setSize(m.width, m.height)
+		}
 		return m, nil
 	case storeEventMsg:
 		m.reload() // also refreshes the active Sprints/Runs view
 		if m.mode == modeDetail && m.detail != nil {
 			m.detail.reload()
 		}
+		if m.mode == modeSprintDetail && m.sprintDetail != nil {
+			m.sprintDetail.reload()
+		}
+		return m, nil
+	case openIssueDetailMsg:
+		// Raised by the Sprint detail's Issues panel. Open the ticket detail over
+		// it; m.sprintDetail stays set so routeDetail returns here on the way out.
+		m.detail = newDetail(m.store, m.runMgr, m.sched, m.theme, msg.issueID, m.width, m.height)
+		m.mode = modeDetail
 		return m, nil
 	case errMsg:
 		m.errText = msg.err.Error()
@@ -407,11 +421,15 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.mode == modeDetail && m.detail != nil {
 		return m.routeDetail(msg)
 	}
+	if m.mode == modeSprintDetail && m.sprintDetail != nil {
+		return m.routeSprintDetail(msg)
+	}
 	return m, nil
 }
 
-// routeDetail forwards a message to the detail view and returns to the active
-// view when it signals done.
+// routeDetail forwards a message to the ticket detail and, when it signals done,
+// returns to wherever it was opened from: the Sprint detail if one is still
+// open beneath it (drilled in from its Issues panel), otherwise the active view.
 func (m Model) routeDetail(msg tea.Msg) (tea.Model, tea.Cmd) {
 	if m.detail == nil {
 		m.mode = modeNormal
@@ -419,8 +437,29 @@ func (m Model) routeDetail(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 	cmd, back := m.detail.Update(msg)
 	if back {
-		m.mode = modeNormal
 		m.detail = nil
+		m.reload()
+		if m.sprintDetail != nil {
+			m.mode = modeSprintDetail
+			m.sprintDetail.reload()
+		} else {
+			m.mode = modeNormal
+		}
+	}
+	return m, cmd
+}
+
+// routeSprintDetail forwards a message to the Sprint detail and returns to the
+// Sprints list when it signals done.
+func (m Model) routeSprintDetail(msg tea.Msg) (tea.Model, tea.Cmd) {
+	if m.sprintDetail == nil {
+		m.mode = modeNormal
+		return m, nil
+	}
+	cmd, back := m.sprintDetail.Update(msg)
+	if back {
+		m.mode = modeNormal
+		m.sprintDetail = nil
 		m.reload()
 	}
 	return m, cmd
@@ -442,6 +481,8 @@ func (m Model) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m.updateConfirm(msg)
 	case modeDetail:
 		return m.routeDetail(msg)
+	case modeSprintDetail:
+		return m.routeSprintDetail(msg)
 	case modePicker:
 		return m.updatePicker(msg)
 	case modeSearch:
@@ -493,9 +534,16 @@ func (m Model) View() tea.View {
 		v.WindowTitle = m.windowTitle()
 		return v
 	}
-	// The detail view takes over the whole screen.
+	// The detail views take over the whole screen.
 	if m.mode == modeDetail && m.detail != nil {
 		v := tea.NewView(m.detail.View())
+		v.AltScreen = true
+		v.BackgroundColor = m.theme.P.BgBase
+		v.WindowTitle = m.windowTitle()
+		return v
+	}
+	if m.mode == modeSprintDetail && m.sprintDetail != nil {
+		v := tea.NewView(m.sprintDetail.View())
 		v.AltScreen = true
 		v.BackgroundColor = m.theme.P.BgBase
 		v.WindowTitle = m.windowTitle()

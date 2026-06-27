@@ -14,6 +14,11 @@ import (
 
 const columnGutter = 3
 
+// boardMargin is the horizontal inset the board shares with the footer and detail
+// chrome (rendered as " " + content + " "), so it sits with equal padding on both
+// sides instead of flush to the terminal edges.
+const boardMargin = 1
+
 // renderBoard draws the kanban columns (or an empty state) in a region exactly
 // `height` rows tall, so the footer stays pinned to the bottom. While a search
 // is live it heads the columns with a filter header — the same one the Backlog
@@ -22,6 +27,13 @@ func (m Model) renderBoard(height int) string {
 	t := m.theme
 	if m.active.ID == 0 {
 		return m.center(m.welcome(), height)
+	}
+	// A SCRUM board shows only the active sprint's work; with none running the
+	// board is empty by design, so prompt the planner to start one rather than
+	// show bare lanes. This precedes the no-columns and search branches because an
+	// unsprinted board has no cards to fill or filter.
+	if m.board.sprint == nil {
+		return m.center(m.boardNoSprint(), height)
 	}
 	if len(m.board.columns) == 0 {
 		return m.center(t.Empty.Render("This project has no columns."), height)
@@ -32,25 +44,88 @@ func (m Model) renderBoard(height int) string {
 		if matched == 0 {
 			return m.center(m.searchEmpty(m.boardQuery), height)
 		}
-		header := filterHeader(t, "Board", m.boardQuery, matched, m.boardTotal, m.width)
-		return fitHeight(lipgloss.JoinVertical(lipgloss.Left, header, "", m.renderColumns(max(0, height-2))), height)
+		header := filterHeader(t, "Board", m.boardQuery, matched, m.boardTotal, m.boardWidth())
+		return fitHeight(m.insetBoard(lipgloss.JoinVertical(lipgloss.Left, header, "", m.renderColumns(max(0, height-2)))), height)
 	}
-	return m.renderColumns(height)
+	// Head the lanes with the active sprint, mirroring the search header's single
+	// row so toggling search never shifts the board beneath it.
+	header := m.boardSprintHeader()
+	return fitHeight(m.insetBoard(lipgloss.JoinVertical(lipgloss.Left, header, "", m.renderColumns(max(0, height-2)))), height)
+}
+
+// boardColW is the per-column width for the active board, clamped to a legible
+// minimum. renderColumns and the sprint header both derive their geometry from it
+// so the header lines up with the columns beneath it.
+func (m Model) boardColW() int {
+	n := len(m.board.columns)
+	inner := m.width - 2*boardMargin
+	if n == 0 || inner < 1 {
+		return m.width
+	}
+	colW := (inner - (n-1)*columnGutter) / n
+	if colW < 16 {
+		colW = 16
+	}
+	return colW
+}
+
+// boardWidth is the inner width the board renders at — the right edge the sprint
+// and search headers align to. The board fills the terminal minus its side
+// margins (see renderColumns/insetBoard); on a terminal too narrow for the
+// minimum column width the clamped lanes overflow and the header matches them.
+func (m Model) boardWidth() int {
+	n := len(m.board.columns)
+	inner := m.width - 2*boardMargin
+	if n == 0 || inner < 1 {
+		return m.width
+	}
+	if w := n*m.boardColW() + (n-1)*columnGutter; w > inner {
+		return w // clamped columns overflow the margins; the header matches them
+	}
+	return inner
+}
+
+// insetBoard frames a board block (header + lanes, each boardWidth wide) with the
+// shared horizontal margin on both sides — matching the footer and detail chrome
+// (" " + content + " ") — so the board sits with equal padding left and right
+// rather than flush to the terminal edges. It renders flush when the terminal is
+// too narrow to spare the margins.
+func (m Model) insetBoard(block string) string {
+	if boardMargin <= 0 || m.boardWidth() >= m.width {
+		return block
+	}
+	pad := strings.Repeat(" ", boardMargin)
+	lines := strings.Split(block, "\n")
+	for i, ln := range lines {
+		lines[i] = pad + ln + pad
+	}
+	return strings.Join(lines, "\n")
 }
 
 // renderColumns lays the kanban lanes side by side in a region exactly `height`
-// rows tall.
+// rows tall, filling the board's inner width (the terminal minus its side
+// margins) so the lanes spread evenly with equal padding on both sides.
 func (m Model) renderColumns(height int) string {
 	n := len(m.board.columns)
-	colW := (m.width - (n-1)*columnGutter) / n
-	if colW < 16 {
-		colW = 16
+	colW := m.boardColW()
+	// Spread the leftover from integer-dividing the inner width across the gutters
+	// so the board fills its inner width exactly and the side margins stay equal.
+	// The first `extra` gutters get one cell wider; a single space between lanes is
+	// invisible and every column keeps the same width. (When colW is clamped on a
+	// narrow terminal there is no leftover.)
+	extra := m.boardWidth() - (n*colW + (n-1)*columnGutter)
+	if extra < 0 {
+		extra = 0
 	}
 
 	blocks := make([]string, 0, n*2)
 	for i, col := range m.board.columns {
 		if i > 0 {
-			blocks = append(blocks, fitHeight(strings.Repeat(" ", columnGutter), height)) // gutter column
+			gutter := columnGutter
+			if i <= extra {
+				gutter++
+			}
+			blocks = append(blocks, fitHeight(strings.Repeat(" ", gutter), height)) // gutter column
 		}
 		blocks = append(blocks, m.renderColumn(col, i, colW, height))
 	}
@@ -65,6 +140,57 @@ func (m Model) welcome() string {
 	cta := button(t, iconAdd+" Create your first project", true)
 	hint := t.HelpDesc.Render("press enter to begin · ? for help")
 	return lipgloss.JoinVertical(lipgloss.Center, title, "", body, "", cta, "", hint)
+}
+
+// boardNoSprint is the board's empty state when no sprint is running. The board
+// is a SCRUM board — it shows the active sprint's work — so an empty board is a
+// prompt, not an error: start or plan a sprint, both of which live in the
+// Sprints view, where enter (or n) jumps.
+func (m Model) boardNoSprint() string {
+	t := m.theme
+	title := t.Title.Render(iconSprints + "  No active sprint")
+	body := t.HelpDesc.Render("The board shows the work in your active sprint.")
+	cta := button(t, "Go to Sprints", true)
+	hint := t.HelpDesc.Render("start a planned sprint, or plan a new one · ⌥tab")
+	return lipgloss.JoinVertical(lipgloss.Center, title, "", body, "", cta, "", hint)
+}
+
+// boardSprintHeader names the sprint the board is scoped to: its glyph and state
+// in the lifecycle accent, the window it runs, and a tally of its work — the
+// same reading the Sprints view gives the row, so the active sprint looks
+// identical wherever you meet it.
+func (m Model) boardSprintHeader() string {
+	t := m.theme
+	sp := m.board.sprint
+	c := t.SprintStateColor(sp.State)
+	width := m.boardWidth()
+
+	dot := lipgloss.NewStyle().Foreground(c).Render(iconSprints)
+	name := lipgloss.NewStyle().Foreground(t.P.TextPrimary).Bold(true).Render(truncate(sp.Name, max(8, width/3)))
+	state := lipgloss.NewStyle().Foreground(c).Render(string(sp.State))
+	// No leading indent: the glyph sits at column 0, flush with the board columns'
+	// status dots below it.
+	left := dot + " " + name + "   " + state
+	if dr := sprintDates(*sp); dr != "" {
+		left += t.HelpDesc.Render("   " + dr)
+	}
+
+	issues, pts := 0, 0
+	for _, col := range m.board.columns {
+		for _, iss := range col.cards {
+			issues++
+			if iss.StoryPoints != nil {
+				pts += *iss.StoryPoints
+			}
+		}
+	}
+	meta := fmt.Sprintf("%d issue%s", issues, pluralS(issues))
+	if pts > 0 {
+		meta += fmt.Sprintf(" · %d pts", pts)
+	}
+	// Spread across the board's own width (not the full terminal) so the tally
+	// lands on the last column's right edge, flush with its count.
+	return spread(left, t.HelpDesc.Render(meta), width)
 }
 
 func (m Model) renderColumn(col column, idx, colW, height int) string {
@@ -229,7 +355,7 @@ func (m Model) renderAddCard(colW int, selected bool) string {
 // hidden while a search is live — a filtered board is for finding, not creating,
 // and a fresh issue would likely fall outside the filter and vanish.
 func (m Model) columnHasAddCard(idx int) bool {
-	return m.boardQuery == "" && idx >= 0 && idx < len(m.board.columns) &&
+	return m.boardQuery == "" && m.board.sprint != nil && idx >= 0 && idx < len(m.board.columns) &&
 		m.board.columns[idx].status.Category == core.CategoryTodo
 }
 
@@ -272,7 +398,9 @@ func (m Model) renderCard(iss core.Issue, selected bool, colW int) string {
 
 	body := keyLine + "\n" + title
 	if len(metas) > 0 {
-		body += "\n" + truncate(strings.Join(metas, "  "), textW)
+		// The metas are already styled, so they carry ANSI escapes; clip ANSI-aware
+		// to avoid slicing through an escape and leaking raw bytes onto the card.
+		body += "\n" + ansiClip(strings.Join(metas, "  "), textW)
 	}
 
 	style := t.Card
@@ -331,6 +459,17 @@ func (m Model) updateBoard(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	}
+	// No active sprint: the board is a "start a sprint" prompt whose one move is to
+	// the Sprints view, where sprints are planned and started. Global keys (⌥tab,
+	// projects, help…) are handled before this, so they still work.
+	if m.board.sprint == nil {
+		if key.Matches(msg, m.keys.Enter) || key.Matches(msg, m.keys.New) {
+			m.view = viewSprints
+			m.refreshView()
+			return m, nil
+		}
+		return m, nil
+	}
 
 	switch {
 	case key.Matches(msg, m.keys.Search):
@@ -380,8 +519,11 @@ func (m Model) updateBoard(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		}
 	case key.Matches(msg, m.keys.Enter):
 		if m.onAddCard() {
-			// Create directly into this column's status.
+			// Create directly into this column's status, joining the active sprint so
+			// the new card lands on the board (onAddCard ⇒ a sprint is active).
 			m.form = newCreateIssueForm(m.board.columns[m.colIdx].status.ID)
+			sid := m.board.sprint.ID
+			m.form.sprintID = &sid
 			m.mode = modeForm
 			return m, m.form.focusCmd()
 		}

@@ -47,6 +47,12 @@ func RegisterAll(s *mcpsdk.Server, svc *Service) {
 		Description: "List a project's sprints."}, svc.listSprints)
 	mcpsdk.AddTool(s, &mcpsdk.Tool{Name: "add_to_sprint",
 		Description: "Add an issue to a sprint, or return it to the backlog when no sprint is given."}, svc.addToSprint)
+	mcpsdk.AddTool(s, &mcpsdk.Tool{Name: "create_sprint",
+		Description: "Create a future sprint in a project."}, svc.createSprint)
+	mcpsdk.AddTool(s, &mcpsdk.Tool{Name: "start_sprint",
+		Description: "Start a sprint, making it the project's active sprint. A project may have only one active sprint at a time."}, svc.startSprint)
+	mcpsdk.AddTool(s, &mcpsdk.Tool{Name: "complete_sprint",
+		Description: "Complete a sprint; its unfinished issues return to the backlog while done issues stay attached as the record of what shipped."}, svc.completeSprint)
 	mcpsdk.AddTool(s, &mcpsdk.Tool{Name: "list_tags",
 		Description: "List a project's tags."}, svc.listTags)
 	mcpsdk.AddTool(s, &mcpsdk.Tool{Name: "tag_issue",

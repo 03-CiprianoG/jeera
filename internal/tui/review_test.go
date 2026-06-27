@@ -18,6 +18,7 @@ func TestMoveSelectionSurvivesStoreEvent(t *testing.T) {
 	m, st := newTestModel(t)
 	p := seedProject(t, st)
 	iss, _ := st.CreateIssue(core.Issue{ProjectID: p.ID, Title: "follow me"})
+	activateSprint(t, st, p.ID)
 	m.reload()
 	m.colIdx, m.cardIdx = 0, 0
 
@@ -40,12 +41,13 @@ func TestMoveSelectionSurvivesStoreEvent(t *testing.T) {
 func TestStoreEventTriggersReload(t *testing.T) {
 	m, st := newTestModel(t)
 	p := seedProject(t, st)
+	sid := activateSprint(t, st, p.ID)
 	m.reload()
 	if got := len(m.board.columns[0].cards); got != 0 {
 		t.Fatalf("expected empty board, got %d cards", got)
 	}
-	// An agent creates an issue directly in the store…
-	st.CreateIssue(core.Issue{ProjectID: p.ID, Title: "filed by an agent"})
+	// An agent files an issue straight into the active sprint…
+	st.CreateIssue(core.Issue{ProjectID: p.ID, Title: "filed by an agent", SprintID: &sid})
 	// …and the bridged event makes the board reflect it.
 	next, _ := m.Update(storeEventMsg{ev: core.Event{Type: core.EventIssueCreated}})
 	m = next.(Model)
@@ -60,6 +62,9 @@ func TestMoveSelectedAtEdgesIsNoOp(t *testing.T) {
 	st.CreateIssue(core.Issue{ProjectID: p.ID, Title: "x"})
 	m.reload()
 	m.colIdx, m.cardIdx = 0, 0
+
+	activateSprint(t, st, p.ID)
+	m.reload()
 
 	// Left at the first column is a no-op (stays in column 0).
 	next, _ := m.moveSelected(-1)
@@ -84,6 +89,7 @@ func TestMoveKeyRoutesToTransition(t *testing.T) {
 	m, st := newTestModel(t)
 	p := seedProject(t, st)
 	iss, _ := st.CreateIssue(core.Issue{ProjectID: p.ID, Title: "x"})
+	activateSprint(t, st, p.ID)
 	m.reload()
 	m.colIdx, m.cardIdx = 0, 0
 
@@ -120,7 +126,8 @@ func TestConfirmCancelLeavesIssueIntact(t *testing.T) {
 
 func TestFormEscCancelsWithoutMutating(t *testing.T) {
 	m, st := newTestModel(t)
-	seedProject(t, st)
+	p := seedProject(t, st)
+	activateSprint(t, st, p.ID)
 	m.reload()
 
 	m.colIdx, m.cardIdx = 0, 0                  // the To Do column's "+ New issue" slot

@@ -19,6 +19,7 @@ func TestReloadGroupsIssuesByColumn(t *testing.T) {
 	if _, err := st.CreateIssue(core.Issue{ProjectID: p.ID, Title: "b"}); err != nil {
 		t.Fatal(err)
 	}
+	activateSprint(t, st, p.ID)
 	m.reload()
 
 	if m.active.ID != p.ID {
@@ -36,6 +37,7 @@ func TestMoveSelectedTransitions(t *testing.T) {
 	m, st := newTestModel(t)
 	p := seedProject(t, st)
 	iss, _ := st.CreateIssue(core.Issue{ProjectID: p.ID, Title: "move me"})
+	activateSprint(t, st, p.ID)
 	m.reload()
 	m.colIdx, m.cardIdx = 0, 0
 
@@ -81,9 +83,11 @@ func TestSubmitCreateProject(t *testing.T) {
 
 func TestSubmitCreateIssueSelectsResult(t *testing.T) {
 	m, st := newTestModel(t)
-	seedProject(t, st)
+	p := seedProject(t, st)
+	sid := activateSprint(t, st, p.ID)
 	m.reload()
 	m.form = newCreateIssueForm(0)
+	m.form.sprintID = &sid
 	m.form.fields[0].SetValue("Ship it")
 	m.mode = modeForm
 
@@ -136,6 +140,7 @@ func TestDeleteFlowViaKeys(t *testing.T) {
 	m, st := newTestModel(t)
 	p := seedProject(t, st)
 	iss, _ := st.CreateIssue(core.Issue{ProjectID: p.ID, Title: "doomed"})
+	activateSprint(t, st, p.ID)
 	m.reload()
 	m.colIdx, m.cardIdx = 0, 0
 
@@ -175,6 +180,7 @@ func TestDeleteStopsSchedule(t *testing.T) {
 	p := seedProject(t, st)
 	iss, _ := st.CreateIssue(core.Issue{ProjectID: p.ID, Title: "doomed but scheduled"})
 	sc, _ := sched.Add(iss.ID, "0 9 * * *", false)
+	activateSprint(t, st, p.ID)
 	m.reload()
 	m.colIdx, m.cardIdx = 0, 0
 	if sched.ActiveJobs() != 1 {
@@ -200,6 +206,7 @@ func TestBoardNavigationClamps(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		st.CreateIssue(core.Issue{ProjectID: p.ID, Title: "x"})
 	}
+	activateSprint(t, st, p.ID)
 	m.reload()
 	m.colIdx, m.cardIdx = 0, 0
 

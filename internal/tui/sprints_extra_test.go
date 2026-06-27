@@ -121,11 +121,14 @@ func TestSprintsEmptySprintHeaderSelectable(t *testing.T) {
 func TestLoadSprintsOrdering(t *testing.T) {
 	_, st := newTestModel(t)
 	p := seedProject(t, st)
-	for _, sp := range []core.Sprint{ // scrambled creation order, includes a completed one
+	// Scrambled creation order with a single active sprint (only one is allowed per
+	// project), plus two future and one completed, to prove the view sorts
+	// active→future→completed while preserving newest-first within each group.
+	for _, sp := range []core.Sprint{
 		{ProjectID: p.ID, Name: "done", State: core.SprintCompleted},
-		{ProjectID: p.ID, Name: "live-1", State: core.SprintActive},
-		{ProjectID: p.ID, Name: "next", State: core.SprintFuture},
-		{ProjectID: p.ID, Name: "live-2", State: core.SprintActive},
+		{ProjectID: p.ID, Name: "live", State: core.SprintActive},
+		{ProjectID: p.ID, Name: "next-1", State: core.SprintFuture},
+		{ProjectID: p.ID, Name: "next-2", State: core.SprintFuture},
 	} {
 		if _, err := st.CreateSprint(sp); err != nil {
 			t.Fatalf("CreateSprint: %v", err)
@@ -140,7 +143,7 @@ func TestLoadSprintsOrdering(t *testing.T) {
 	for _, r := range sd.sprints {
 		got = append(got, r.sprint.State)
 	}
-	want := []core.SprintState{core.SprintActive, core.SprintActive, core.SprintFuture, core.SprintCompleted}
+	want := []core.SprintState{core.SprintActive, core.SprintFuture, core.SprintFuture, core.SprintCompleted}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("sprint order = %v, want active→future→completed %v", got, want)
 	}

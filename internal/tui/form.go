@@ -68,9 +68,10 @@ type formModel struct {
 	submit    string // the primary button's label ("Create" / "Save")
 	fields    []formField
 	focus     int
-	issueID   int64 // target for formRename
-	projectID int64 // target for formEditProject
-	statusID  int64 // target column for a new issue (0 → the project's first status)
+	issueID   int64  // target for formRename
+	projectID int64  // target for formEditProject
+	statusID  int64  // target column for a new issue (0 → the project's first status)
+	sprintID  *int64 // sprint a new issue joins (set when creating on the board; nil → backlog)
 }
 
 func newTextField(label, placeholder string, limit int) formField {
@@ -380,6 +381,7 @@ func (m Model) submitForm() (tea.Model, tea.Cmd) {
 			Priority:    core.Priority(f.fields[2].value()),
 			Description: f.fields[3].value(),
 			StatusID:    f.statusID,
+			SprintID:    f.sprintID,
 		})
 		if err != nil {
 			return m, reportErr(err)

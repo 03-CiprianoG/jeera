@@ -180,7 +180,7 @@ Every shot below is the real TUI over a seeded demo project — **Helios**, a re
 |---|:--:|---|
 | **Projects** bound to a git repo | ✅ | Each owns a key prefix (`HEL-17`) and a repo; switch, **edit**, **delete**, and pin a **default** that opens on startup |
 | **Issues** — epics · stories · tasks · bugs · subtasks | ✅ | Markdown descriptions, per-project sequential keys |
-| **Kanban board** | ✅ | *To Do / In Progress / In Review / Done* lanes; move cards with `⇧+arrows`; tall lanes scroll to keep the selection in view |
+| **Sprint board** (the active sprint) | ✅ | A SCRUM board: the **active sprint's** issues across *To Do / In Progress / In Review / Done* lanes; move cards with `⇧+arrows`; tall lanes scroll. With no active sprint it prompts you to start one |
 | **Ticket detail "bento"** | ✅ | Markdown edit/preview + in-place editing of status, type, priority, points, sprint, epic, tags & assignee |
 | **In-view search** | ✅ | `⌘F` / `/` filters the Board or Backlog to issues matching *every* term — key, title, description, type or assignee |
 | **Backlog** view | ✅ | Every unsprinted issue in one list; assign straight to a sprint |
@@ -232,7 +232,7 @@ Every shot below is the real TUI over a seeded demo project — **Helios**, a re
 
 ## Agent tools (MCP)
 
-Point any MCP client at the server (the TUI shows the live URL) and it gets **16 typed tools** over Streamable HTTP at `http://127.0.0.1:7777`. Agents address everything by human-readable identifiers — issues by `key` (`HEL-17`), projects by `key_prefix`, and statuses / sprints / epics / tags by **name**. Internal numeric IDs are never exposed.
+Point any MCP client at the server (the TUI shows the live URL) and it gets **19 typed tools** over Streamable HTTP at `http://127.0.0.1:7777`. Agents address everything by human-readable identifiers — issues by `key` (`HEL-17`), projects by `key_prefix`, and statuses / sprints / epics / tags by **name**. Internal numeric IDs are never exposed.
 
 | Tool | Category | Purpose |
 |---|---|---|
@@ -249,12 +249,15 @@ Point any MCP client at the server (the TUI shows the live URL) and it gets **16
 | `link_issues` | Relationships | Relate two issues (blocks / blocked_by / relates / duplicates) |
 | `add_attachment` | Attachments | Attach a URL or file-path reference to an issue |
 | `list_sprints` | Sprints | List a project's sprints |
+| `create_sprint` | Sprints | Plan a future sprint in a project |
+| `start_sprint` | Sprints | Start a sprint — make it the project's one active sprint |
+| `complete_sprint` | Sprints | Finish a sprint; unfinished issues roll back to the backlog |
 | `add_to_sprint` | Sprints | Add an issue to a sprint (or return it to the backlog) |
 | `list_tags` | Tags | List a project's tags |
 | `tag_issue` | Tags | Add a tag to an issue, creating it if needed |
 
 <details>
-<summary><b>Full tool reference</b> — arguments & return shapes for all 16 tools</summary>
+<summary><b>Full tool reference</b> — arguments & return shapes for all 19 tools</summary>
 <br/>
 
 Optional arguments are marked `?`. Most tools return an **Issue** object (`key`, `title`, `type`, `status`, `priority`, `story_points?`, `assignee?`, `epic_key?`, `sprint?`, `tags?`, `description?`, timestamps).
@@ -291,6 +294,9 @@ Optional arguments are marked `?`. Most tools return an **Issue** object (`key`,
 | Tool | Arguments | Returns |
 |---|---|---|
 | `list_sprints` | `project` | `{ sprints: Sprint[] }` |
+| `create_sprint` | `project`, `name`, `goal?` | `Sprint` _(future)_ |
+| `start_sprint` | `project`, `sprint` | `Sprint` _(now active; one active per project)_ |
+| `complete_sprint` | `project`, `sprint` | `Sprint` _(completed; unfinished issues → backlog)_ |
 | `add_to_sprint` | `key`, `sprint?` _(empty → backlog)_ | `Issue` |
 | `list_tags` | `project` | `{ tags: Tag[] }` |
 | `tag_issue` | `key`, `tag` | `Issue` |

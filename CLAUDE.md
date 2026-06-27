@@ -34,7 +34,7 @@ internal/
   core/         domain model (Issue, Status, Priority, Run, Schedule, Attachment, …) + validation
   store/        local-first SQLite persistence (system of record) + change-event bus
   mcp/          MCP HTTP server + 19 typed tools, over the shared store
-  tui/          Bubble Tea sprint board (scoped to the active sprint), ticket detail, runs/settings views, theme (the design system)
+  tui/          Bubble Tea sprint board (scoped to the active sprint), ticket detail, sprint detail (goal, burndown, progress, breakdown, issues), runs/settings views, theme (the design system)
   agent/        pluggable provider drivers (claude/codex) — arg construction + stream parsing
   run/          execution engine: run manager, lifecycle, versioning, Start-with-children, Discuss
   worktree/     git worktree add/list/remove wrappers

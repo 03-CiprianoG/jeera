@@ -1,0 +1,30 @@
+ ◴  Sprint 7   ● active                         tab panels · esc back 
+╭─ GOAL ─────────────────────────────────────────────────────────────╮
+│ Ship the Sprint dashboard: goal, burndown and a way into every     │
+│ issue.                                                             │
+│                                                                    │
+│                                                                    │
+│                                                           ✎ Edit   │
+╰────────────────────────────────────────────────────────────────────╯
+╭─ PROGRESS ─────────────────────────────────────────────────────────╮
+│ 35% complete · by pts                                              │
+│ ███████████████████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ │
+│ Points                                                      8 / 23 │
+│ Issues                                                       2 / 7 │
+│ Timeline                                         day 7/14 · 7 left │
+│                                                                    │
+│ ● Behind schedule · 4 pts over                                     │
+│                                                                    │
+│   Finish sprint     ⏱ Dates                                        │
+╰────────────────────────────────────────────────────────────────────╯
+╭─ ISSUES · 7 ───────────────────────────────────────────────────────╮
+│ ● JEE-1    Design the sprint dashboard layout                  5pt │
+│ ● JEE-2    Hand-roll the braille burndown chart                3pt │
+│ ● JEE-3    Wire the Progress readout and pace                  5pt │
+│ ● JEE-4    Status breakdown bars by category                   3pt │
+│ ● JEE-5    Navigate into a sprint's issues                     2pt │
+│ ● JEE-6    Edit the sprint window in-view                      2pt │
+╰────────────────────────────────────────────────────────────────────╯
+╭─ BREAKDOWN ────────────────────────────────────────────────────────╮
+│ To Do       ██████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 2·5p      │
+│ In Progress ██████████░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░ 2·5p      │

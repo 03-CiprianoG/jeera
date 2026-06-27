@@ -112,9 +112,15 @@ func TestSprintsEmptySprintHeaderSelectable(t *testing.T) {
 	if !ok || it.kind != itemHeader {
 		t.Fatalf("the empty sprint header should be selectable")
 	}
-	next, _ := m.Update(keyPress("enter")) // a header opens nothing
-	if next.(Model).mode != modeNormal {
-		t.Error("enter on a sprint header should not open a detail")
+	// Enter on a header opens the full-screen Sprint detail, even for an empty
+	// sprint — its goal, window and lifecycle are still worth managing there.
+	next, _ := m.Update(keyPress("enter"))
+	nm := next.(Model)
+	if nm.mode != modeSprintDetail || nm.sprintDetail == nil {
+		t.Errorf("enter on a sprint header should open the sprint detail, mode=%v", nm.mode)
+	}
+	if nm.sprintDetail.sprintID != it.sprint.ID {
+		t.Errorf("opened sprint %d, want the selected empty sprint %d", nm.sprintDetail.sprintID, it.sprint.ID)
 	}
 }
 

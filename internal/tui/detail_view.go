@@ -123,7 +123,55 @@ func (d *detailModel) View() string {
 	body := d.renderBento()
 	footer := d.renderFooter()
 	content := lipgloss.JoinVertical(lipgloss.Left, title, body, footer)
-	return fitHeight(content, d.height)
+	content = fitHeight(content, d.height)
+	if d.mode == dEditDesc && d.mention.active {
+		content = d.overlayMention(content)
+	}
+	return content
+}
+
+// overlayMention floats the "@" file-picker dropdown over the rendered detail
+// view, anchored just under the caret's line so it can spill past the cramped
+// Description panel onto the panels below — like an editor autocomplete. It flips
+// above the caret when it would otherwise reach the footer.
+func (d *detailModel) overlayMention(base string) string {
+	L := d.layout()
+	innerW := L.leftW - 8 // span the editor's text column (border+pad each side)
+	if innerW < 16 {
+		innerW = 16
+	}
+	box := d.mention.view(d.theme, innerW)
+	boxW, boxH := lipgloss.Width(box), lipgloss.Height(box)
+
+	x := 2 // flush with the editor interior, covering its left gutter
+	if x+boxW > d.width {
+		if x = d.width - boxW; x < 0 {
+			x = 0
+		}
+	}
+
+	// Caret's visual row within the editor viewport. Line()/RowOffset are exact
+	// for the short, rarely-wrapped lines this narrow editor holds.
+	editorTop := 5 // title bar(1) + panel border(1) + two title rows(2) + blank(1)
+	h := d.descViewportHeight()
+	caretRow := d.desc.Line() - d.desc.ScrollYOffset() + d.desc.LineInfo().RowOffset
+	if caretRow < 0 {
+		caretRow = 0
+	}
+	if caretRow > h-1 {
+		caretRow = h - 1
+	}
+	y := editorTop + caretRow + 1
+	if y+boxH > d.height-1 { // would reach the footer — flip above the caret
+		if y = editorTop + caretRow - boxH; y < 1 {
+			y = 1
+		}
+	}
+
+	return lipgloss.NewCompositor(
+		lipgloss.NewLayer(base),
+		lipgloss.NewLayer(box).X(x).Y(y).Z(1),
+	).Render()
 }
 
 // renderTitleBar is the always-on identity row: key, type and live status on the
@@ -408,11 +456,26 @@ func (d *detailModel) relationsBody(L dlayout) string {
 		if focused && d.attachSel == i {
 			st = lipgloss.NewStyle().Foreground(t.P.FocusGlow).Bold(true)
 		}
-		lines = append(lines, st.Render(icon+" "+name))
+		// Make the row a clickable hyperlink to the file (or URL), exactly like a
+		// file reference in the rendered description.
+		lines = append(lines, osc8(attachmentURI(a), st.Render(icon+" "+name)))
 	}
 	lines = append(lines, "", lipgloss.NewStyle().Width(w).Align(lipgloss.Right).
 		Render(button(t, iconClip+" Attach", focused && d.attachSel == len(d.attachments))))
 	return strings.Join(lines, "\n")
+}
+
+// attachmentURI is the hyperlink target for an attachment row: the URL itself for
+// link attachments, or a file:// URI for files. Empty when there's nothing to
+// point at, so the row renders as plain text.
+func attachmentURI(a core.Attachment) string {
+	if a.IsURL() {
+		return a.Path
+	}
+	if a.Path == "" {
+		return ""
+	}
+	return fileURI(a.Path)
 }
 
 // --- footer ------------------------------------------------------------------
@@ -438,7 +501,11 @@ func (d *detailModel) renderFooter() string {
 	case dInput:
 		hint = t.Label.Render(d.inputLabel()) + " " + d.input.View() + "   " + seg("enter", "save") + "  " + seg("esc", "cancel")
 	case dEditDesc:
-		hint = fitSegments([]string{seg("ctrl+s", "save"), seg("esc", "cancel")}, budget, t)
+		segs := []string{seg("ctrl+s", "save"), seg("esc", "cancel"), seg("@", "link file")}
+		if d.mention.active { // the picker owns these keys while it's open
+			segs = []string{seg("↑↓", "move"), seg("↵", "insert"), seg("esc", "dismiss")}
+		}
+		hint = fitSegments(segs, budget, t)
 	default:
 		hint = fitSegments(d.panelHints(seg), budget, t)
 	}

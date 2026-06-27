@@ -116,6 +116,7 @@ type detailModel struct {
 	desc      textarea.Model
 	input     textinput.Model
 	inputKind inputKind
+	mention   fileMention // inline "@" file picker, active only while editing the description
 
 	mode          detailMode
 	focus         detailPanel
@@ -178,12 +179,25 @@ func (d *detailModel) renderDescription() {
 	iw := d.descInteriorWidth()
 	d.vp.SetWidth(iw)
 	d.vp.SetHeight(d.descViewportHeight())
-	d.vp.SetContent(renderMarkdown(d.issue.Description, iw))
+	d.vp.SetContent(renderMarkdown(d.issue.Description, iw, d.repoRoot()))
 }
 
 // Update handles a message while the detail view is focused. It returns a
 // command and whether to return to the active view.
 func (d *detailModel) Update(msg tea.Msg) (tea.Cmd, bool) {
+	if m, ok := msg.(repoFilesLoadedMsg); ok {
+		if m.issueID == d.issueID {
+			if m.err != nil {
+				d.mention.load = mentionFailed
+				d.mention.files = nil
+			} else {
+				d.mention.files = m.files
+				d.mention.load = mentionReady
+			}
+			d.refreshMention()
+		}
+		return nil, false
+	}
 	switch d.mode {
 	case dEditDesc:
 		return d.updateEditDesc(msg)
@@ -474,14 +488,66 @@ func (d *detailModel) startEditDesc() tea.Cmd {
 	ta.SetValue(d.issue.Description)
 	d.desc = ta
 	d.mode = dEditDesc
-	return d.desc.Focus()
+
+	// Arm the inline "@" file picker by enumerating the repo off the update loop.
+	// loadRepoFilesCmd falls back to the working directory when the project has no
+	// usable repo path, so "@" works whenever Jeera runs inside a git repo.
+	d.mention = fileMention{load: mentionPending}
+	return tea.Batch(d.desc.Focus(), loadRepoFilesCmd(d.projectRepoPath(), d.issueID))
+}
+
+// projectRepoPath is the project's configured repo path — the preferred root for
+// the "@" file picker. Empty when the project or its repo is unknown, in which
+// case the loader falls back to the working directory.
+func (d *detailModel) projectRepoPath() string {
+	p, err := d.store.GetProject(d.issue.ProjectID)
+	if err != nil {
+		return ""
+	}
+	return p.RepoPath
+}
+
+// repoRoot resolves the directory that file references in the description are
+// relative to: the project's repo path when it's a real directory, otherwise the
+// directory Jeera was launched from. It mirrors the "@" picker's enumeration root
+// so inserted links resolve back to the right files.
+func (d *detailModel) repoRoot() string {
+	if p := d.projectRepoPath(); p != "" {
+		if fi, err := os.Stat(p); err == nil && fi.IsDir() {
+			return p
+		}
+	}
+	if wd, err := os.Getwd(); err == nil {
+		return wd
+	}
+	return ""
 }
 
 func (d *detailModel) updateEditDesc(msg tea.Msg) (tea.Cmd, bool) {
 	if key, ok := msg.(tea.KeyPressMsg); ok {
+		// While the "@" picker is open it owns navigation, accept and dismiss;
+		// everything else (typing, backspace, left/right) falls through to the
+		// textarea and then re-derives the token.
+		if d.mention.active {
+			switch key.String() {
+			case "up", "ctrl+p":
+				d.mention.move(-1)
+				return nil, false
+			case "down", "ctrl+n":
+				d.mention.move(+1)
+				return nil, false
+			case "enter", "tab":
+				d.acceptMention()
+				return nil, false
+			case "esc":
+				d.closeMention()
+				return nil, false
+			}
+		}
 		switch key.String() {
 		case "esc":
 			d.mode = dViewing
+			d.closeMention()
 			return nil, false
 		case "ctrl+s":
 			d.issue.Description = d.desc.Value()
@@ -489,13 +555,117 @@ func (d *detailModel) updateEditDesc(msg tea.Msg) (tea.Cmd, bool) {
 				d.err = err.Error()
 			}
 			d.mode = dViewing
+			d.closeMention()
 			d.reload()
 			return nil, false
 		}
 	}
 	var cmd tea.Cmd
 	d.desc, cmd = d.desc.Update(msg)
+	d.refreshMention()
 	return cmd, false
+}
+
+// refreshMention re-derives the "@" token from the textarea's buffer and caret
+// after every edit, refiltering matches or closing the picker when the token is
+// gone. The picker stays closed when the repo failed to load (so "@" is literal).
+func (d *detailModel) refreshMention() {
+	if d.mode != dEditDesc || d.mention.load == mentionFailed || d.mention.load == mentionIdle {
+		d.mention.active = false
+		return
+	}
+	line, col, ok := d.descCaretLine()
+	if !ok {
+		d.mention.active = false
+		return
+	}
+	_, query, ok := activeMention(line, col)
+	if !ok {
+		d.mention.active = false
+		return
+	}
+	if query != d.mention.query || !d.mention.active {
+		d.mention.sel = 0
+	}
+	d.mention.query = query
+	d.mention.matches = rankFiles(d.mention.files, query)
+	if d.mention.sel >= len(d.mention.matches) {
+		d.mention.sel = 0
+	}
+	d.mention.active = true
+}
+
+// acceptMention replaces the "@query" token under the caret with a Markdown link
+// to the selected file. It deletes the token via the textarea (keeping the caret
+// correct) and inserts the link in its place.
+func (d *detailModel) acceptMention() {
+	if len(d.mention.matches) == 0 || d.mention.sel >= len(d.mention.matches) {
+		d.closeMention()
+		return
+	}
+	line, col, ok := d.descCaretLine()
+	if !ok {
+		d.closeMention()
+		return
+	}
+	at, _, ok := activeMention(line, col)
+	if !ok {
+		d.closeMention()
+		return
+	}
+	rel := d.mention.matches[d.mention.sel]
+	for i := 0; i < col-at; i++ { // delete "@" + query, left of the caret
+		d.desc, _ = d.desc.Update(tea.KeyPressMsg{Code: tea.KeyBackspace})
+	}
+	d.desc.InsertString(markdownLink(rel))
+	d.attachFile(rel)
+	d.closeMention()
+}
+
+// attachFile records a picked repo file as an issue attachment (deduplicated) so
+// it shows in the Relations & Files panel and can be opened from there. It
+// resolves the repo-relative path to an absolute one and captures the size,
+// mirroring the manual Attach flow (see submitInput/ikAttach).
+func (d *detailModel) attachFile(rel string) {
+	abs := rel
+	if root := d.repoRoot(); root != "" {
+		abs = filepath.Join(root, filepath.FromSlash(rel))
+	}
+	for _, a := range d.attachments { // already linked — don't add a duplicate
+		if a.Path == abs {
+			return
+		}
+	}
+	a := core.ClassifyAttachment(abs)
+	a.IssueID = d.issue.ID
+	if fi, err := os.Stat(abs); err == nil {
+		a.Size = fi.Size()
+	}
+	if _, err := d.store.CreateAttachment(a); err != nil {
+		d.err = err.Error()
+		return
+	}
+	d.attachments, _ = d.store.ListAttachments(d.issue.ID) // refresh the panel now
+}
+
+// closeMention dismisses the picker while keeping the loaded file list for reuse
+// within the same edit session.
+func (d *detailModel) closeMention() {
+	d.mention.active = false
+	d.mention.query = ""
+	d.mention.matches = nil
+	d.mention.sel = 0
+}
+
+// descCaretLine returns the runes of the textarea's current logical line and the
+// caret's column within it.
+func (d *detailModel) descCaretLine() (line []rune, col int, ok bool) {
+	row := d.desc.Line()
+	lines := strings.Split(d.desc.Value(), "\n")
+	if row < 0 || row >= len(lines) {
+		return nil, 0, false
+	}
+	return []rune(lines[row]), d.desc.Column(), true
 }
 
 func (d *detailModel) startInput(kind inputKind, value string) tea.Cmd {

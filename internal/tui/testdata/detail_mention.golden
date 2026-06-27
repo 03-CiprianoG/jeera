@@ -1,0 +1,30 @@
+ JEE-1  story  ● To Do                                                        tab panels · esc back
+╭─ DESCRIPTION ──────────────────────────────────────────────╮ ╭─ PROPERTIES ──────────────────────╮
+│ Build the board                                            │ │ Status     To Do                  │
+│                                                            │ │ Type       story                  │
+│                                                            │ │ Priority   ■ medium               │
+│ ┃   1 The bento layout in @det                             │ │ Points     —                      │
+│ ╭────────────────────────────────────────────────────────╮ │ │ Sprint     —                      │
+│ │ ⌕ det                                           3 of 7 │ │ │ Epic       —                      │
+│ │ ▸ detail.go         internal/tui                       │ │ │ Tags       —                      │
+│ │   detail_view.go    internal/tui                       │ │ ╰───────────────────────────────────╯
+│ │   detail_fields.go  internal/tui                       │ │ ╭─ AGENT ───────────────────────────╮
+│ │ ↑↓ move · ↵ insert · esc dismiss                       │ │ │ Provider   —                      │
+│ ╰────────────────────────────────────────────────────────╯ │ │ Model      —                      │
+│ ┃                                                          │ │ Effort     —                      │
+│ ┃                                                          │ │ Worktree   on                     │
+│                                                            │ │                                   │
+╰────────────────────────────────────────────────────────────╯ │   ▶ Run                           │
+╭─ ACTIVITY ─────────────────────────────────────────────────╮ │   ✦ Discuss     ⏱ Schedule        │
+│ No activity yet — start the conversation.                  │ ╰───────────────────────────────────╯
+│                                                            │ ╭─ RELATIONS & FILES ───────────────╮
+│                                                            │ │ Epic     —                        │
+│                                                            │ │ Parent   —                        │
+│                                                            │ │ FILES · 0                         │
+│                                                            │ │                                   │
+│                                                            │ │                        ◌ Attach   │
+│                                                            │ │                                   │
+│                                                            │ │                                   │
+│                                                + Comment   │ │                                   │
+╰────────────────────────────────────────────────────────────╯ ╰───────────────────────────────────╯
+ ↑↓ move  ↵ insert  esc dismiss

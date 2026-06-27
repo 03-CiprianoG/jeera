@@ -12,7 +12,7 @@
 [![CI](https://github.com/03-CiprianoG/jeera/actions/workflows/ci.yml/badge.svg)](https://github.com/03-CiprianoG/jeera/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/03-CiprianoG/jeera?color=8891D9&label=release)](https://github.com/03-CiprianoG/jeera/releases/latest)
 ![Go](https://img.shields.io/badge/Go-1.26-6FB3C9?logo=go&logoColor=white)
-![MCP](https://img.shields.io/badge/MCP-16%20tools-7FB894)
+![MCP](https://img.shields.io/badge/MCP-19%20tools-7FB894)
 ![Single binary](https://img.shields.io/badge/single%20static%20binary-no%20account%2C%20offline-5E647A)
 
 <samp>
@@ -112,6 +112,14 @@ Every shot below is the real TUI over a seeded demo project — **Helios**, a re
 
 > `HEL-17` open: rendered Markdown **Description**, a **Properties** panel (status · type · priority · points · sprint · epic · tags), an **Agent** panel (the model assignee, worktree toggle, and **Run / Discuss / Schedule**), **Activity** (human + agent-run comments) and **Relations & Files** (links + attachments). `tab` walks the panels; edits save instantly.
 
+### The sprint detail — goal, burndown & a way into every issue
+
+<div align="center">
+  <img src="docs/screens/sprint.png" alt="Sprint detail — goal, burndown, progress, breakdown and issues" width="100%" />
+</div>
+
+> `enter` on a sprint opens its command center: the **Goal** as the hero, a **Burndown** charting the ideal guideline against the work *actually* remaining, a **Progress** readout (percent · points · a pace verdict — *on track / behind / ahead*), a **Breakdown** of where the work sits by status, and the sprint's **Issues** — `enter` drills into any one, `esc` brings you back.
+
 ### Runs, Sprints & Backlog
 
 <table>
@@ -121,7 +129,7 @@ Every shot below is the real TUI over a seeded demo project — **Helios**, a re
 </tr>
 <tr>
 <td valign="top"><b>Runs</b> — every execution, versioned (<code>v1</code>, <code>v2</code>…), across <i>queued / running / succeeded / failed / cancelled / blocked</i>, with provider·model and resumable sessions.</td>
-<td valign="top"><b>Sprints</b> — time-boxed sets ordered <i>active → future → completed</i>, each with its goal, date window, issue count and points.</td>
+<td valign="top"><b>Sprints</b> — time-boxed sets ordered <i>active → future → completed</i>, each with its goal, date window, issue count and points; <code>enter</code> opens a sprint's detail (goal · burndown · progress).</td>
 </tr>
 <tr>
 <td width="50%"><img src="docs/screens/backlog.png" alt="Backlog view" width="100%" /></td>
@@ -185,6 +193,7 @@ Every shot below is the real TUI over a seeded demo project — **Helios**, a re
 | **In-view search** | ✅ | `⌘F` / `/` filters the Board or Backlog to issues matching *every* term — key, title, description, type or assignee |
 | **Backlog** view | ✅ | Every unsprinted issue in one list; assign straight to a sprint |
 | **Sprints** | ✅ | Time-boxed, *future / active / completed*, goals & date windows, backlog ↔ sprint |
+| **Sprint detail & burndown** | ✅ | Open any sprint for its goal, a braille **burndown** (ideal vs. actual remaining), progress & pace, a status breakdown, and a way into every issue |
 | **Priority · story points · tags** | ✅ | Five priority levels, point estimates, project-scoped colored labels |
 | **Relationships** | ✅ | *blocks · blocked-by · relates · duplicates*, shown from both sides |
 | **Comments & activity** | ✅ | Humans **and** agent runs post to the same timeline |
@@ -201,7 +210,7 @@ Every shot below is the real TUI over a seeded demo project — **Helios**, a re
 
 | Feature | | Notes |
 |---|:--:|---|
-| **Embedded MCP server** | ✅ | Streamable HTTP, started with `jeera` / `--headless`; **16 typed tools** for agents |
+| **Embedded MCP server** | ✅ | Streamable HTTP, started with `jeera` / `--headless`; **19 typed tools** for agents |
 | **Start a ticket** | ✅ | Spawn `claude`/`codex` on the issue; it drives the ticket over MCP, streamed into **Runs** |
 | **Run versioning** | ✅ | Every Start is a new, recorded run version (provider · model · effort · session · status · lineage) |
 | **Per-ticket git worktrees** | ✅ | Each run is isolated on its own branch (default on, toggle per ticket) |
@@ -338,6 +347,7 @@ Jeera is keyboard-first. `⌥tab` switches the four top-level views; `tab` moves
 
 | Key | Action |
 |---|---|
+| `enter` | open the **sprint detail** (on a sprint header) or the ticket (on an issue) |
 | `a` | assign issue to a sprint (Backlog) · add/move issue (Sprints) |
 | `s` | advance a sprint's state — *future → active → completed* |
 | `⌫` | pull a sprinted issue back to the backlog |
@@ -369,6 +379,15 @@ Jeera is keyboard-first. `⌥tab` switches the four top-level views; `tab` moves
 | `e` | edit the Markdown description (`ctrl+s` to save) |
 | `o` | open the selected attachment externally |
 | `esc` / `q` | back to the board |
+
+**Sprint detail**
+
+| Key | Action |
+|---|---|
+| `tab` / `⇧tab` | focus the **Goal · Progress · Issues** panels |
+| `enter` | edit the goal · run a Progress button (start/finish · dates) · open the selected issue |
+| `←` / `→` | pick the Progress action |
+| `esc` / `q` | back to the Sprints list |
 
 </details>
 
@@ -461,7 +480,7 @@ The interface is one calm design system — *"Slate & Iris"*: a deep blue-slate 
 Released under [semantic versioning](https://semver.org); each milestone is one or more pull requests. Jeera is **feature-complete and stable** (latest: see the [release badge](https://github.com/03-CiprianoG/jeera/releases/latest)).
 
 - [x] **Foundation** — domain model + local SQLite store
-- [x] **MCP server** — 16 typed tools over the shared store
+- [x] **MCP server** — 19 typed tools over the shared store
 - [x] **Kanban board** — design system + the human's board
 - [x] **Ticket detail** — rich-text editing, every field, comments
 - [x] **Execution engine** — Start / worktrees / runs / versioning
@@ -470,6 +489,7 @@ Released under [semantic versioning](https://semver.org); each milestone is one 
 - [x] **Agent actions** — Discuss/Expand + Start-with-children
 - [x] **Attachments** — links, file refs, external open
 - [x] **Backlog & Sprints** views — dedicated management screens
+- [x] **Sprint detail & burndown** — goal, burndown chart, progress, breakdown & a way into every issue
 - [ ] **Dedicated epic board**
 
 ---

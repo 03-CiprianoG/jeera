@@ -94,7 +94,7 @@ func (svc *Service) listSprints(_ context.Context, _ *mcpsdk.CallToolRequest, ar
 	}
 	out := SprintListResult{Sprints: make([]SprintDTO, 0, len(sprints))}
 	for _, sp := range sprints {
-		out.Sprints = append(out.Sprints, SprintDTO{Name: sp.Name, Goal: sp.Goal, State: string(sp.State)})
+		out.Sprints = append(out.Sprints, sprintDTO(sp))
 	}
 	return nil, out, nil
 }
@@ -128,6 +128,85 @@ func (svc *Service) addToSprint(_ context.Context, _ *mcpsdk.CallToolRequest, ar
 	}
 	dto, err := svc.issueDTO(updated)
 	return nil, dto, err
+}
+
+// sprintDTO projects a sprint into its wire form.
+func sprintDTO(sp core.Sprint) SprintDTO {
+	return SprintDTO{Name: sp.Name, Goal: sp.Goal, State: string(sp.State)}
+}
+
+// --- create_sprint -----------------------------------------------------------
+
+type CreateSprintArgs struct {
+	Project string `json:"project" jsonschema:"the project key prefix, e.g. JEE"`
+	Name    string `json:"name" jsonschema:"the sprint name, e.g. Sprint 1"`
+	Goal    string `json:"goal,omitempty" jsonschema:"an optional sprint goal"`
+}
+
+func (svc *Service) createSprint(_ context.Context, _ *mcpsdk.CallToolRequest, args CreateSprintArgs) (*mcpsdk.CallToolResult, SprintDTO, error) {
+	p, err := svc.resolveProject(args.Project)
+	if err != nil {
+		return nil, SprintDTO{}, err
+	}
+	// New sprints start in the future state; activation goes through start_sprint,
+	// so the one-active-sprint rule lives in a single place.
+	sp, err := svc.store.CreateSprint(core.Sprint{ProjectID: p.ID, Name: args.Name, Goal: args.Goal})
+	if err != nil {
+		return nil, SprintDTO{}, err
+	}
+	return nil, sprintDTO(sp), nil
+}
+
+// --- start_sprint ------------------------------------------------------------
+
+type StartSprintArgs struct {
+	Project string `json:"project" jsonschema:"the project key prefix, e.g. JEE"`
+	Sprint  string `json:"sprint" jsonschema:"the name of the sprint to start (make active)"`
+}
+
+func (svc *Service) startSprint(_ context.Context, _ *mcpsdk.CallToolRequest, args StartSprintArgs) (*mcpsdk.CallToolResult, SprintDTO, error) {
+	p, err := svc.resolveProject(args.Project)
+	if err != nil {
+		return nil, SprintDTO{}, err
+	}
+	sp, err := svc.resolveSprint(p.ID, args.Sprint)
+	if err != nil {
+		return nil, SprintDTO{}, err
+	}
+	if err := svc.store.StartSprint(sp.ID); err != nil {
+		return nil, SprintDTO{}, err
+	}
+	updated, err := svc.store.GetSprint(sp.ID)
+	if err != nil {
+		return nil, SprintDTO{}, err
+	}
+	return nil, sprintDTO(updated), nil
+}
+
+// --- complete_sprint ---------------------------------------------------------
+
+type CompleteSprintArgs struct {
+	Project string `json:"project" jsonschema:"the project key prefix, e.g. JEE"`
+	Sprint  string `json:"sprint" jsonschema:"the name of the sprint to complete; its unfinished issues return to the backlog"`
+}
+
+func (svc *Service) completeSprint(_ context.Context, _ *mcpsdk.CallToolRequest, args CompleteSprintArgs) (*mcpsdk.CallToolResult, SprintDTO, error) {
+	p, err := svc.resolveProject(args.Project)
+	if err != nil {
+		return nil, SprintDTO{}, err
+	}
+	sp, err := svc.resolveSprint(p.ID, args.Sprint)
+	if err != nil {
+		return nil, SprintDTO{}, err
+	}
+	if err := svc.store.CompleteSprint(sp.ID); err != nil {
+		return nil, SprintDTO{}, err
+	}
+	updated, err := svc.store.GetSprint(sp.ID)
+	if err != nil {
+		return nil, SprintDTO{}, err
+	}
+	return nil, sprintDTO(updated), nil
 }
 
 // --- list_tags ---------------------------------------------------------------

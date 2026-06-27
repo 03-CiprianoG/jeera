@@ -1,0 +1,30 @@
+ ◴  Sprint 7   ● active   Jun 20 – Jul 4 · day 7/14                           tab panels · esc back 
+╭─ GOAL ───────────────────────────────────────────────────╮ ╭─ PROGRESS ──────────────────────────╮
+│ Ship the Sprint dashboard: goal, burndown and a way into │ │ 35% complete · by pts               │
+│ every issue.                                             │ │ ████████████░░░░░░░░░░░░░░░░░░░░░░░ │
+│                                                          │ │ Points                       8 / 23 │
+│                                                          │ │ Issues                        2 / 7 │
+│                                                 ✎ Edit   │ │ Timeline          day 7/14 · 7 left │
+╰──────────────────────────────────────────────────────────╯ │                                     │
+╭─ BURNDOWN ───────────────────────────────────────────────╮ │ ● Behind schedule · 4 pts over      │
+│    ━━ actual   ━━ ideal                                  │ │                                     │
+│ 23┤⠙⠫⢍⠉⠱⡀                                                │ │   Finish sprint     ⏱ Dates         │
+│   │   ⠉⠒⢵⡀                                               │ ╰─────────────────────────────────────╯
+│   │      ⠹⡑⠤⣀                                            │ ╭─ BREAKDOWN ─────────────────────────╮
+│   │       ⠱⠤⠤⠵⠦⢤⠤⠤⢄                                      │ │ To Do       ███░░░░░░░░░░ 2·5p      │
+│   │             ⠉⠒⢄⡑⢄                                    │ │ In Progress ███░░░░░░░░░░ 2·5p      │
+│   │                ⠈⠑⠵⣤⠤⠤⠤⠤⠤⠤⠤                           │ │ In Review   ███░░░░░░░░░░ 1·5p      │
+│   │                    ⠑⠢⢄                               │ │ Done        █████░░░░░░░░ 2·8p      │
+│   │                       ⠉⠒⢄⡀                           │ │                                     │
+│   │                          ⠈⠑⠤⣀                        │ │ 1 story · 5 task · 1 bug            │
+│   │                              ⠑⠢⢄                     │ ╰─────────────────────────────────────╯
+│   │                                 ⠉⠒⢄⡀                 │ ╭─ ISSUES · 7 ────────────────────────╮
+│   │                                    ⠈⠑⠤⣀              │ │ ● JEE-1    Design the sprint …  5pt │
+│   │                                        ⠑⠢⢄           │ │ ● JEE-2    Hand-roll the brai…  3pt │
+│   │                                           ⠉⠒⢄⡀       │ │ ● JEE-3    Wire the Progress …  5pt │
+│   │                                              ⠈⠑⠤⣀    │ │ ● JEE-4    Status breakdown b…  3pt │
+│  0┤                                                  ⠑⠢⢄ │ │ ● JEE-5    Navigate into a sp…  2pt │
+│   └───────────────────────────────────────────────────── │ │ ● JEE-6    Edit the sprint wi…  2pt │
+│    Jun 20                                          Jul 4 │ │ ● JEE-7    Polish the empty a…  3pt │
+╰──────────────────────────────────────────────────────────╯ ╰─────────────────────────────────────╯
+ tab panel  enter edit goal  esc back                                                               

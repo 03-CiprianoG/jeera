@@ -54,14 +54,23 @@ func TestCardWindow(t *testing.T) {
 func seedTallColumn(t *testing.T, m *Model) {
 	t.Helper()
 	p := seedProject(t, m.store)
+	sp, err := m.store.CreateSprint(core.Sprint{ProjectID: p.ID, Name: "Sprint 1", State: core.SprintActive})
+	if err != nil {
+		t.Fatalf("CreateSprint: %v", err)
+	}
 	for i := 1; i <= 10; i++ {
-		if _, err := m.store.CreateIssue(core.Issue{
+		iss, err := m.store.CreateIssue(core.Issue{
 			ProjectID: p.ID,
 			Title:     fmt.Sprintf("Backlog item number %d", i),
 			Type:      core.TypeTask,
 			Priority:  core.PriorityMedium,
-		}); err != nil {
+		})
+		if err != nil {
 			t.Fatalf("CreateIssue %d: %v", i, err)
+		}
+		// Scope each to the active sprint so the board (not the backlog) holds them.
+		if err := m.store.AddIssueToSprint(iss.ID, &sp.ID); err != nil {
+			t.Fatalf("AddIssueToSprint %d: %v", i, err)
 		}
 	}
 	m.reload()

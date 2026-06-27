@@ -70,7 +70,7 @@ func filterBoard(bd boardData, query string) boardData {
 	for i, c := range bd.columns {
 		cols[i] = column{status: c.status, cards: filterIssues(c.cards, query)}
 	}
-	return boardData{columns: cols, tags: bd.tags}
+	return boardData{sprint: bd.sprint, columns: cols, tags: bd.tags}
 }
 
 // countCards totals the cards across a board's columns.
@@ -182,6 +182,9 @@ func (m Model) openSearch() (tea.Model, tea.Cmd) {
 	case viewBoard:
 		applied = m.boardQuery
 		if bd, err := loadBoard(m.store, m.active.ID); err == nil {
+			if bd.sprint == nil {
+				return m, nil // no active sprint → nothing on the board to search
+			}
 			for _, c := range bd.columns {
 				all = append(all, c.cards...)
 			}

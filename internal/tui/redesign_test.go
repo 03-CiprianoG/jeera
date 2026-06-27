@@ -152,9 +152,11 @@ func TestSprintFormRejectsEndBeforeStart(t *testing.T) {
 
 func TestIssueFormChoiceCycles(t *testing.T) {
 	m, st := newTestModel(t)
-	seedProject(t, st)
+	p := seedProject(t, st)
+	sid := activateSprint(t, st, p.ID)
 	m.reload()
 	m.form = newCreateIssueForm(0)
+	m.form.sprintID = &sid
 	m.mode = modeForm
 	m.form.fields[0].SetValue("Pick a type")
 	m.form.focus = 1 // the Type choice

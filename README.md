@@ -22,7 +22,7 @@
 <a href="#features">Features</a> &nbsp;·&nbsp;
 <a href="#agent-tools-mcp">MCP tools</a> &nbsp;·&nbsp;
 <a href="#keybindings">Keys</a> &nbsp;·&nbsp;
-<a href="#install">Install</a> &nbsp;·&nbsp;
+<a href="#get-started">Get started</a> &nbsp;·&nbsp;
 <a href="#configuration">Config</a>
 </samp>
 
@@ -32,8 +32,60 @@
 > **One binary.** Run `jeera` and you get a calm terminal board for **you** and an embedded **MCP server** for your **agents** — both reading and writing one local source of truth — plus a one-key **Start** that spawns a coding agent on a ticket. No account, no cloud, no telemetry.
 
 <div align="center">
-  <img src="docs/screens/board.png" alt="The Jeera kanban board" width="100%" />
+  <img src="docs/demo.gif" alt="A fast tour of the Jeera TUI — board, in-view search, the ticket-detail bento, sprint burndown, runs, and the live MCP wire" width="100%" />
+  <br/>
+  <sub>A ~30-second tour of the whole app. &nbsp;·&nbsp; <a href="docs/demo.mp4">▶&nbsp;Watch the MP4</a> (smaller &amp; sharper).</sub>
 </div>
+
+---
+
+## Get started
+
+> [!TIP]
+> **Three steps.** Install the binary, run `jeera`, and point your agent at the MCP URL it prints. No account, nothing to provision — your issues live in a local SQLite file on your machine.
+
+### Install
+
+**Pre-built binary** — download the archive for your OS/arch from the [latest release](https://github.com/03-CiprianoG/jeera/releases/latest), extract, and put `jeera` on your `PATH`.
+
+**`go install`** (Go 1.26+):
+
+```sh
+go install github.com/03-CiprianoG/jeera@latest
+```
+
+**From source:**
+
+```sh
+git clone https://github.com/03-CiprianoG/jeera.git
+cd jeera
+go build -o jeera .        # single static binary (CGO-free)
+```
+
+### Update
+
+```sh
+# installed via go install
+go install github.com/03-CiprianoG/jeera@latest
+
+# running from a clone
+git pull && go build -o jeera .
+
+# on a release binary — download the newer archive and replace jeera on your PATH
+```
+
+Confirm what you're on with `jeera version`.
+
+### Run
+
+```sh
+jeera             # the board + the embedded MCP server (the default)
+jeera --headless  # MCP server only — no TUI (great for servers & cron)
+jeera --no-mcp    # TUI only — no MCP server
+jeera version     # print version and exit
+```
+
+Jeera keeps its data in your XDG data dir (`~/.local/share/jeera/jeera.db`) and reads config from `~/.config/jeera/` — both honor `XDG_*` and the `JEERA_DATA_DIR` / `JEERA_CONFIG_DIR` overrides. The moment the board opens, the footer shows the live MCP endpoint your agents connect to (see [Connecting an agent](#connecting-an-agent)).
 
 ---
 
@@ -390,29 +442,6 @@ Jeera is keyboard-first. `⌥tab` switches the four top-level views; `tab` moves
 | `esc` / `q` | back to the Sprints list |
 
 </details>
-
----
-
-## Install
-
-**Pre-built binaries** — download the archive for your OS/arch from the [latest release](https://github.com/03-CiprianoG/jeera/releases/latest), extract, and put `jeera` on your `PATH`.
-
-**`go install`** (Go 1.26+):
-
-```sh
-go install github.com/03-CiprianoG/jeera@latest
-```
-
-**From source:**
-
-```sh
-git clone https://github.com/03-CiprianoG/jeera.git
-cd jeera
-go build -o jeera .     # single static binary (CGO-free)
-./jeera version
-```
-
-Jeera stores data under your XDG data dir (`~/.local/share/jeera/jeera.db`) and reads config from `~/.config/jeera/`. Both honor `XDG_*` and the `JEERA_DATA_DIR` / `JEERA_CONFIG_DIR` overrides.
 
 ---
 

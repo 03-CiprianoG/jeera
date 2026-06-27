@@ -6,6 +6,28 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-06-27
+
+Sprints get a full-screen detail with a burndown, and the board becomes a true
+SCRUM board scoped to the active sprint.
+
+### Added
+- **Sprint detail view** (`internal/tui`): `enter` on a sprint opens a full-screen
+  bento — the **Goal** as the hero (editable in place), a hand-rolled braille
+  **burndown** (the ideal guideline vs. the work *actually* remaining, reconstructed
+  from each done issue's last-updated day), a **Progress** readout (percent ·
+  points/issues · a pace verdict — *on track / behind / ahead*), a status
+  **Breakdown** with per-category bars, and the sprint's **Issues** — drill into any
+  one with `enter`, `esc` back. Start/finish/reopen and date editing run through the
+  same SCRUM-safe store methods as the Sprints list. Metrics are a pure, unit-tested
+  function; six golden renders cover the active/future/completed/issue-basis/empty/
+  narrow states.
+
+### Changed
+- **The board is scoped to the active sprint** (#22): it shows the active sprint's
+  issues across *To Do / In Progress / In Review / Done*; with no active sprint it
+  prompts you to start one, keeping the board and the SCRUM cadence in lockstep.
+
 ## [1.0.0] - 2026-06-24
 
 Feature-complete and stable. Jeera is the human's board and the agents' MCP

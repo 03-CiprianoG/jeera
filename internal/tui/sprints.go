@@ -199,17 +199,24 @@ func (m Model) updateSprints(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 // cycleSprintState advances a sprint through its lifecycle: future → active →
 // completed → future, persisting the change so the board and agents see it.
+// Starting and finishing go through StartSprint/CompleteSprint so the SCRUM
+// rules hold — one active sprint per project, and a finished sprint's unfinished
+// issues roll back to the backlog.
 func (m Model) cycleSprintState(sp core.Sprint) (tea.Model, tea.Cmd) {
-	var verb string
+	var (
+		err  error
+		verb string
+	)
 	switch sp.State {
 	case core.SprintFuture:
-		sp.State, verb = core.SprintActive, "started"
+		err, verb = m.store.StartSprint(sp.ID), "started"
 	case core.SprintActive:
-		sp.State, verb = core.SprintCompleted, "completed"
-	default:
+		err, verb = m.store.CompleteSprint(sp.ID), "completed"
+	default: // completed → reopen for re-planning
 		sp.State, verb = core.SprintFuture, "reopened"
+		err = m.store.UpdateSprint(sp)
 	}
-	if err := m.store.UpdateSprint(sp); err != nil {
+	if err != nil {
 		return m, reportErr(err)
 	}
 	m.reload()

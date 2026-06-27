@@ -49,6 +49,29 @@ func seedProject(t *testing.T, st *store.Store) core.Project {
 	return p
 }
 
+// activateSprint creates an active sprint for the project and sweeps every
+// currently-unsprinted issue into it, so a SCRUM board (which shows only the
+// active sprint's work) renders them. It returns the sprint id, which the board
+// create-flow threads onto new issues. Board tests call it after creating their
+// issues and before reload.
+func activateSprint(t *testing.T, st *store.Store, projectID int64) int64 {
+	t.Helper()
+	sp, err := st.CreateSprint(core.Sprint{ProjectID: projectID, Name: "Sprint 1", State: core.SprintActive})
+	if err != nil {
+		t.Fatalf("CreateSprint: %v", err)
+	}
+	issues, err := st.ListIssues(store.IssueFilter{ProjectID: projectID, Unsprinted: true})
+	if err != nil {
+		t.Fatalf("ListIssues: %v", err)
+	}
+	for _, iss := range issues {
+		if err := st.AddIssueToSprint(iss.ID, &sp.ID); err != nil {
+			t.Fatalf("AddIssueToSprint: %v", err)
+		}
+	}
+	return sp.ID
+}
+
 // keyPress builds a KeyPressMsg for a single character or a named special key.
 func keyPress(s string) tea.KeyPressMsg {
 	switch s {

@@ -228,7 +228,8 @@ func TestProjectsTools(t *testing.T) {
 
 func TestSprintTools(t *testing.T) {
 	svc := newTestService(t)
-	// Create a sprint directly via the store (no create_sprint tool yet).
+	// Seed a sprint directly via the store, then exercise list_sprints and
+	// add_to_sprint; the lifecycle tools are covered in TestSprintLifecycleTools.
 	proj, _ := svc.store.GetProjectByPrefix("JEE")
 	if _, err := svc.store.CreateSprint(core.Sprint{ProjectID: proj.ID, Name: "Sprint 1"}); err != nil {
 		t.Fatalf("seed sprint: %v", err)
@@ -247,6 +248,72 @@ func TestSprintTools(t *testing.T) {
 	_, back, err := svc.addToSprint(ctx, nil, AddToSprintArgs{Key: iss.Key})
 	if err != nil || back.Sprint != "" {
 		t.Errorf("backlog return = %+v err=%v", back, err)
+	}
+}
+
+// TestNewMCPServerRegistersAllTools exercises the real registration path
+// (RegisterAll → AddTool's schema inference) that the NewService-based tests
+// skip, so a tool whose argument struct can't be reflected into a JSON schema
+// fails here rather than only at server start.
+func TestNewMCPServerRegistersAllTools(t *testing.T) {
+	if NewMCPServer(newTestService(t)) == nil {
+		t.Fatal("NewMCPServer returned nil")
+	}
+}
+
+func TestSprintLifecycleTools(t *testing.T) {
+	svc := newTestService(t)
+
+	// create_sprint makes a future sprint.
+	_, created, err := svc.createSprint(ctx, nil, CreateSprintArgs{Project: "JEE", Name: "Sprint 1", Goal: "Ship the board"})
+	if err != nil {
+		t.Fatalf("create_sprint: %v", err)
+	}
+	if created.State != "future" || created.Goal != "Ship the board" {
+		t.Errorf("new sprint should be future with its goal, got %+v", created)
+	}
+
+	// start_sprint activates it.
+	_, started, err := svc.startSprint(ctx, nil, StartSprintArgs{Project: "JEE", Sprint: "Sprint 1"})
+	if err != nil {
+		t.Fatalf("start_sprint: %v", err)
+	}
+	if started.State != "active" {
+		t.Errorf("started sprint state = %q, want active", started.State)
+	}
+
+	// A project may have only one active sprint: starting a second is refused.
+	if _, _, err := svc.createSprint(ctx, nil, CreateSprintArgs{Project: "JEE", Name: "Sprint 2"}); err != nil {
+		t.Fatalf("create_sprint 2: %v", err)
+	}
+	if _, _, err := svc.startSprint(ctx, nil, StartSprintArgs{Project: "JEE", Sprint: "Sprint 2"}); err == nil {
+		t.Error("starting a second sprint while one is active should fail")
+	}
+
+	// complete_sprint closes the active sprint and rolls unfinished work back to
+	// the backlog.
+	iss := mustCreate(t, svc, CreateIssueArgs{Project: "JEE", Title: "carryover"})
+	if _, _, err := svc.addToSprint(ctx, nil, AddToSprintArgs{Key: iss.Key, Sprint: "Sprint 1"}); err != nil {
+		t.Fatalf("add_to_sprint: %v", err)
+	}
+	_, done, err := svc.completeSprint(ctx, nil, CompleteSprintArgs{Project: "JEE", Sprint: "Sprint 1"})
+	if err != nil {
+		t.Fatalf("complete_sprint: %v", err)
+	}
+	if done.State != "completed" {
+		t.Errorf("completed sprint state = %q, want completed", done.State)
+	}
+	if reloaded, err := svc.resolveIssue(iss.Key); err != nil {
+		t.Fatalf("resolveIssue: %v", err)
+	} else if reloaded.SprintID != nil {
+		t.Errorf("an unfinished issue should roll back to the backlog, still has sprint %v", reloaded.SprintID)
+	}
+
+	// With the active sprint completed, the project is free to start another.
+	if _, restarted, err := svc.startSprint(ctx, nil, StartSprintArgs{Project: "JEE", Sprint: "Sprint 2"}); err != nil {
+		t.Errorf("starting a sprint after the active one completed should succeed: %v", err)
+	} else if restarted.State != "active" {
+		t.Errorf("Sprint 2 should be active, got %q", restarted.State)
 	}
 }
 

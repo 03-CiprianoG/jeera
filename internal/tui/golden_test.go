@@ -23,7 +23,7 @@ func seedBoard(t *testing.T, m *Model) {
 	tag, _ := st.CreateTag(core.Tag{ProjectID: p.ID, Name: "ui"})
 	st.TagIssue(a.ID, tag.ID)
 
-	st.CreateIssue(core.Issue{ProjectID: p.ID, Title: "Wire up the MCP status pill", Type: core.TypeTask, Priority: core.PriorityMedium})
+	e, _ := st.CreateIssue(core.Issue{ProjectID: p.ID, Title: "Wire up the MCP status pill", Type: core.TypeTask, Priority: core.PriorityMedium})
 
 	b, _ := st.CreateIssue(core.Issue{ProjectID: p.ID, Title: "Fix card overflow on narrow widths", Type: core.TypeBug, Priority: core.PriorityHighest})
 	st.TransitionIssue(b.ID, statuses[1].ID) // In Progress
@@ -33,6 +33,19 @@ func seedBoard(t *testing.T, m *Model) {
 
 	d, _ := st.CreateIssue(core.Issue{ProjectID: p.ID, Title: "Review the theme tokens", Type: core.TypeTask, Priority: core.PriorityMedium})
 	st.TransitionIssue(d.ID, statuses[2].ID) // In Review
+
+	// The board is a SCRUM board scoped to the active sprint, so these issues must
+	// live in one to appear on it (unsprinted issues belong to the backlog). Their
+	// statuses are untouched, so the column spread is unchanged.
+	sp, err := st.CreateSprint(core.Sprint{ProjectID: p.ID, Name: "Sprint 1", State: core.SprintActive})
+	if err != nil {
+		t.Fatalf("CreateSprint: %v", err)
+	}
+	for _, id := range []int64{a.ID, e.ID, b.ID, c.ID, d.ID} {
+		if err := st.AddIssueToSprint(id, &sp.ID); err != nil {
+			t.Fatalf("AddIssueToSprint: %v", err)
+		}
+	}
 
 	m.reload()
 }

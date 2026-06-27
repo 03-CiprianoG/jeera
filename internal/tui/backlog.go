@@ -101,7 +101,27 @@ func (m Model) updateBacklog(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 			}
 			return m.openSprintPicker(iss)
 		}
+	case key.Matches(msg, m.keys.Delete): // x: delete the selected backlog issue
+		if iss, ok := m.selectedBacklogIssue(); ok {
+			return m.confirmDeleteIssue(iss)
+		}
 	}
+	return m, nil
+}
+
+// confirmDeleteIssue opens the shared confirm modal for deleting a backlog
+// issue. The store cascade removes its comments, links and runs.
+func (m Model) confirmDeleteIssue(iss core.Issue) (tea.Model, tea.Cmd) {
+	m.confirm = fmt.Sprintf("Delete issue %s %q? This cannot be undone.", iss.Key, iss.Title)
+	id, key := iss.ID, iss.Key
+	st := m.store
+	m.onConfirm = func() tea.Cmd {
+		if err := st.DeleteIssue(id); err != nil {
+			return reportErr(err)
+		}
+		return toast("deleted " + key)
+	}
+	m.mode = modeConfirm
 	return m, nil
 }
 

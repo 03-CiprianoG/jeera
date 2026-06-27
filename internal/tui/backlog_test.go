@@ -139,6 +139,42 @@ func TestBacklogAssignToSprint(t *testing.T) {
 	}
 }
 
+func TestBacklogDeleteConfirms(t *testing.T) {
+	m, st := newTestModel(t)
+	seedBacklog(t, &m) // two unsprinted issues
+	m.backlogSel = 0
+	iss, _ := m.selectedBacklogIssue()
+
+	next, _ := m.Update(keyPress("x"))
+	m = next.(Model)
+	if m.mode != modeConfirm {
+		t.Fatalf("x in the backlog should ask to confirm, mode=%v", m.mode)
+	}
+	next, _ = m.updateConfirm(keyPress("y"))
+	m = next.(Model)
+	if _, err := st.GetIssue(iss.ID); err == nil {
+		t.Error("confirming should delete the backlog issue")
+	}
+	if m.mode != modeNormal {
+		t.Errorf("confirming should return to normal mode, got %v", m.mode)
+	}
+}
+
+func TestBacklogDeleteCancelKeepsIssue(t *testing.T) {
+	m, st := newTestModel(t)
+	seedBacklog(t, &m)
+	m.backlogSel = 0
+	iss, _ := m.selectedBacklogIssue()
+
+	next, _ := m.Update(keyPress("x"))
+	m = next.(Model)
+	next, _ = m.updateConfirm(keyPress("n")) // decline
+	m = next.(Model)
+	if _, err := st.GetIssue(iss.ID); err != nil {
+		t.Error("declining the confirm should keep the issue")
+	}
+}
+
 func TestBacklogClampSel(t *testing.T) {
 	m, _ := newTestModel(t)
 	seedBacklog(t, &m) // two issues
